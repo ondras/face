@@ -1,11 +1,7 @@
 export type Entity = number;
 
-export type BaseComponents = Record<string, any>;
-
-export function createWorld<Components extends BaseComponents> () {
-	type StorageData = {
-		[T in keyof Components]?: Components[T];
-	}
+export function createWorld<Components> () {
+	type StorageData = { [T in keyof Components]?: Components[T]; }
 
 	type QueryResult<T extends keyof Components> = Components[T] | undefined;
 
@@ -29,9 +25,14 @@ export function createWorld<Components extends BaseComponents> () {
 			data[componentName] = componentData;
 		}
 
-		hasComponent<T extends keyof Components>(entity: Entity, component: T): boolean {
-			let data = this.#storage.get(entity);
-			return !!data && (component in data);
+		hasComponents<T extends keyof Components>(entity: Entity, ...component: T[]): boolean {
+			let data = this.#storage.get(entity) as StorageData;
+			if (!data) { return false; }
+			return component.every(c => c in data);
+		}
+
+		findEntities<T extends keyof Components>(...components: T[]): Entity[] {
+			return [...this.#storage.keys()].filter(entity => this.hasComponents(entity, ...components));
 		}
 
 		queryComponent<T extends keyof Components>(entity: Entity, component: T): QueryResult<T> {
@@ -41,10 +42,6 @@ export function createWorld<Components extends BaseComponents> () {
 
 		queryComponents<T extends keyof Components>(entity: Entity, ...components: T[]): MultiQueryResult<T> | undefined {
 			return this.#storage.get(entity) as MultiQueryResult<T>;
-		}
-
-		findEntities<T extends keyof Components>(component: T): Entity[] {
-			return [...this.#storage.keys()].filter(entity => this.hasComponent(entity, component));
 		}
 	}
 }
