@@ -19,6 +19,7 @@ export type MultiQueryResult<T extends keyof Components> = {
 };
 
 export type Entity = number;
+type ComponentName = keyof Components;
 
 type StorageData = {
 	[T in keyof Components]?: Components[T];
@@ -29,7 +30,7 @@ export function createEntity(): Entity {
 	return Math.random();
 }
 
-export function addComponent<T extends keyof Components>(entity: Entity, componentName: T, componentData: Components[T]) {
+export function addComponent<T extends ComponentName>(entity: Entity, componentName: T, componentData: Components[T]) {
 	let data = storage.get(entity);
 	if (!data) {
 		data = {};
@@ -38,11 +39,57 @@ export function addComponent<T extends keyof Components>(entity: Entity, compone
 	data[componentName] = componentData;
 }
 
-export function queryComponent<T extends keyof Components>(entity: Entity, component: T): QueryResult<T> {
+export function hasComponent<T extends ComponentName>(entity: Entity, component: T): boolean {
+	let data = storage.get(entity);
+	return !!data && (component in data);
+}
+
+export function queryComponent<T extends ComponentName>(entity: Entity, component: T): QueryResult<T> {
 	let data = storage.get(entity);
 	return data ? data[component] : data;
 }
 
-export function queryComponents<T extends keyof Components>(entity: Entity, ...components: T[]): MultiQueryResult<T> | undefined {
+export function queryComponents<T extends ComponentName>(entity: Entity, ...components: T[]): MultiQueryResult<T> | undefined {
 	return storage.get(entity) as MultiQueryResult<T>;
+}
+
+export function findEntities<T extends ComponentName>(component: T): Entity[] {
+	return [...storage.keys()].filter(entity => hasComponent(entity, component));
+}
+
+
+export class World<Components extends Record<string, Record<string, any>>> {
+	#storage = new Map<Entity, StorageData>();
+
+	createEntity(): Entity {
+		return Math.random();
+	}
+
+	addComponent<T extends ComponentName>(entity: Entity, componentName: T, componentData: Components[T]) {
+		let data = storage.get(entity);
+		if (!data) {
+			data = {};
+			storage.set(entity, data);
+		}
+		data[componentName] = componentData;
+	}
+
+	hasComponent<T extends ComponentName>(entity: Entity, component: T): boolean {
+		let data = storage.get(entity);
+		return !!data && (component in data);
+	}
+
+	queryComponent<T extends ComponentName>(entity: Entity, component: T): QueryResult<T> {
+		let data = storage.get(entity);
+		return data ? data[component] : data;
+	}
+
+	queryComponents<T extends ComponentName>(entity: Entity, ...components: T[]): MultiQueryResult<T> | undefined {
+		return storage.get(entity) as MultiQueryResult<T>;
+	}
+
+	findEntities<T extends ComponentName>(component: T): Entity[] {
+		return [...storage.keys()].filter(entity => hasComponent(entity, component));
+	}
+
 }

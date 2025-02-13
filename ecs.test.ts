@@ -2,6 +2,23 @@ import * as ecs from "./ecs.ts";
 import { assertEquals } from "jsr:@std/assert";
 
 
+export interface Position {
+    x: number;
+    y: number;
+}
+
+export interface Visual {
+    ch: string;
+}
+
+interface Components {
+    position: Position;
+    visual: Visual;
+}
+
+let w = new ecs.World<Components>();
+
+
 Deno.test("A", () => {
 	let e = ecs.createEntity();
 	assertEquals(ecs.queryComponent(e, "position"), undefined);
