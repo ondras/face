@@ -1,3 +1,5 @@
+// deno-lint-ignore-file prefer-const
+
 import * as ecs from "./ecs.ts";
 import { assertEquals, assert } from "jsr:@std/assert";
 
@@ -71,4 +73,34 @@ Deno.test("component search", () => {
 	assert(!visual.includes(e1));
 	assert(visual.includes(e2));
 	assert(visual.includes(e3));
+});
+
+Deno.test("initial components", () => {
+	let w = ecs.createWorld<Components>();
+	let e = w.createEntity({
+		position: {x:1, y:2},
+		visual: {ch:"?"},
+	});
+
+	assert(w.hasComponents(e, "position", "visual"));
+});
+
+Deno.test("component removal", () => {
+	let w = ecs.createWorld<Components>();
+	let e = w.createEntity();
+	w.addComponent(e, "position", {x:1, y:2});
+	w.addComponent(e, "visual", {ch:"?"});
+
+	w.removeComponent(e, "position");
+	assertEquals(w.hasComponents(e, "position"), false);
+	assertEquals(w.hasComponents(e, "visual"), true);
+});
+
+Deno.test("nonexistant entity", () => {
+	let w = ecs.createWorld<Components>();
+	let e = 1;
+
+	assertEquals(w.hasComponents(e, "position"), false);
+	w.addComponent(e, "position", {x:1, y:2});
+	assertEquals(w.hasComponents(e, "position"), true);
 });

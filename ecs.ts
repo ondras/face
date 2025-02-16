@@ -1,3 +1,5 @@
+// deno-lint-ignore-file prefer-const
+
 export type Entity = number;
 
 export function createWorld<Components> () {
@@ -12,8 +14,10 @@ export function createWorld<Components> () {
 	return new class World {
 		#storage = new Map<Entity, StorageData>();
 
-		createEntity(): Entity {
-			return Math.random();
+		createEntity(initialComponents: StorageData = {}): Entity {
+			let entity = Math.random();
+			if (initialComponents) { this.#storage.set(entity, structuredClone(initialComponents)); }
+			return entity;
 		}
 
 		addComponent<T extends keyof Components>(entity: Entity, componentName: T, componentData: Components[T]) {
@@ -23,6 +27,11 @@ export function createWorld<Components> () {
 				this.#storage.set(entity, data);
 			}
 			data[componentName] = componentData;
+		}
+
+		removeComponent<T extends keyof Components>(entity: Entity, ...component: T[]) {
+			let data = this.#storage.get(entity) as StorageData;
+			component.forEach(c => delete data[c]);
 		}
 
 		hasComponents<T extends keyof Components>(entity: Entity, ...component: T[]): boolean {
@@ -40,7 +49,7 @@ export function createWorld<Components> () {
 			return data ? data[component] : data;
 		}
 
-		queryComponents<T extends keyof Components>(entity: Entity, ...components: T[]): MultiQueryResult<T> | undefined {
+		queryComponents<T extends keyof Components>(entity: Entity, ..._components: T[]): MultiQueryResult<T> | undefined {
 			return this.#storage.get(entity) as MultiQueryResult<T>;
 		}
 	}
