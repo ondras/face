@@ -101,6 +101,7 @@ Deno.test("nonexistant entity", () => {
 	let e = 1;
 
 	assertEquals(w.hasComponents(e, "position"), false);
+	assertEquals(w.queryComponent(e, "position"), undefined);
 	w.addComponent(e, "position", {x:1, y:2});
 	assertEquals(w.hasComponents(e, "position"), true);
 });
