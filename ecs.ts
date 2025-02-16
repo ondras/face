@@ -2,8 +2,10 @@
 
 export type Entity = number;
 
+export type ComponentBag<Components> = { [T in keyof Components]?: Components[T]; }
+
 export function createWorld<Components> () {
-	type StorageData = { [T in keyof Components]?: Components[T]; }
+	type Storage = ComponentBag<Components>;
 
 	type QueryResult<T extends keyof Components> = Components[T] | undefined;
 
@@ -12,9 +14,9 @@ export function createWorld<Components> () {
 	};
 
 	return new class World {
-		#storage = new Map<Entity, StorageData>();
+		#storage = new Map<Entity, Storage>();
 
-		createEntity(initialComponents: StorageData = {}): Entity {
+		createEntity(initialComponents: Storage = {}): Entity {
 			let entity = Math.random();
 			if (initialComponents) { this.#storage.set(entity, structuredClone(initialComponents)); }
 			return entity;
@@ -30,12 +32,12 @@ export function createWorld<Components> () {
 		}
 
 		removeComponent<T extends keyof Components>(entity: Entity, ...component: T[]) {
-			let data = this.#storage.get(entity) as StorageData;
+			let data = this.#storage.get(entity) as Storage;
 			component.forEach(c => delete data[c]);
 		}
 
 		hasComponents<T extends keyof Components>(entity: Entity, ...component: T[]): boolean {
-			let data = this.#storage.get(entity) as StorageData;
+			let data = this.#storage.get(entity) as Storage;
 			if (!data) { return false; }
 			return component.every(c => c in data);
 		}
