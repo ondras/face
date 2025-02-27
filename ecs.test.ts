@@ -1,6 +1,6 @@
 // deno-lint-ignore-file prefer-const
 
-import * as ecs from "./ecs.ts";
+import { World } from "./ecs.ts";
 import { assertEquals, assert } from "jsr:@std/assert";
 
 
@@ -20,14 +20,14 @@ interface Components {
 
 
 Deno.test("component missing", () => {
-	let w = ecs.createWorld<Components>();
+	let w = new World<Components>();
 	let e = w.createEntity();
 	assertEquals(w.hasComponents(e, "position"), false);
 	assertEquals(w.queryComponent(e, "position"), undefined);
 });
 
 Deno.test("component present", () => {
-	let w = ecs.createWorld<Components>();
+	let w = new World<Components>();
 	let e = w.createEntity();
 	let pos = {x:1, y:2};
 	w.addComponent(e, "position", pos);
@@ -37,7 +37,7 @@ Deno.test("component present", () => {
 });
 
 Deno.test("multiple components present", () => {
-	let w = ecs.createWorld<Components>();
+	let w = new World<Components>();
 	let e = w.createEntity();
 	let pos = {x:1, y:2};
 	let vis = {ch:"?"};
@@ -52,7 +52,7 @@ Deno.test("multiple components present", () => {
 });
 
 Deno.test("component search", () => {
-	let w = ecs.createWorld<Components>();
+	let w = new World<Components>();
 	let e1 = w.createEntity();
 	let e2 = w.createEntity();
 	let e3 = w.createEntity();
@@ -76,7 +76,7 @@ Deno.test("component search", () => {
 });
 
 Deno.test("initial components", () => {
-	let w = ecs.createWorld<Components>();
+	let w = new World<Components>();
 	let e = w.createEntity({
 		position: {x:1, y:2},
 		visual: {ch:"?"},
@@ -86,7 +86,7 @@ Deno.test("initial components", () => {
 });
 
 Deno.test("component removal", () => {
-	let w = ecs.createWorld<Components>();
+	let w = new World<Components>();
 	let e = w.createEntity();
 	w.addComponent(e, "position", {x:1, y:2});
 	w.addComponent(e, "visual", {ch:"?"});
@@ -97,7 +97,7 @@ Deno.test("component removal", () => {
 });
 
 Deno.test("nonexistant entity", () => {
-	let w = ecs.createWorld<Components>();
+	let w = new World<Components>();
 	let e = 1;
 
 	assertEquals(w.hasComponents(e, "position"), false);

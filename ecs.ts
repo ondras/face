@@ -2,57 +2,55 @@
 
 export type Entity = number;
 
-export type ComponentBag<Components> = { [T in keyof Components]?: Components[T]; }
+export type ComponentBag<C> = { [T in keyof C]?: C[T]; }
 
-export function createWorld<Components> () {
-	type Storage = ComponentBag<Components>;
+type Storage<C> = ComponentBag<C>;
 
-	type QueryResult<T extends keyof Components> = Components[T] | undefined;
+type QueryResult<C, T extends keyof C> = C[T] | undefined;
 
-	type MultiQueryResult<T extends keyof Components> = {
-		[K in T]: QueryResult<K>;
-	};
+type MultiQueryResult<C, T extends keyof C> = {
+	[K in T]: QueryResult<C, K>;
+};
 
-	return new class World {
-		#storage = new Map<Entity, Storage>();
+export class World<C = {}> {
+	#storage = new Map<Entity, Storage<C>>();
 
-		createEntity(initialComponents: Storage = {}): Entity {
-			let entity = Math.random();
-			if (initialComponents) { this.#storage.set(entity, structuredClone(initialComponents)); }
-			return entity;
+	createEntity(initialComponents: Storage<C> = {}): Entity {
+		let entity = Math.random();
+		if (initialComponents) { this.#storage.set(entity, structuredClone(initialComponents)); }
+		return entity;
+	}
+
+	addComponent<T extends keyof C>(entity: Entity, componentName: T, componentData: C[T]) {
+		let data = this.#storage.get(entity);
+		if (!data) {
+			data = {};
+			this.#storage.set(entity, data);
 		}
+		data[componentName] = componentData;
+	}
 
-		addComponent<T extends keyof Components>(entity: Entity, componentName: T, componentData: Components[T]) {
-			let data = this.#storage.get(entity);
-			if (!data) {
-				data = {};
-				this.#storage.set(entity, data);
-			}
-			data[componentName] = componentData;
-		}
+	removeComponent<T extends keyof C>(entity: Entity, ...component: T[]) {
+		let data = this.#storage.get(entity) as Storage<C>;
+		component.forEach(c => delete data[c]);
+	}
 
-		removeComponent<T extends keyof Components>(entity: Entity, ...component: T[]) {
-			let data = this.#storage.get(entity) as Storage;
-			component.forEach(c => delete data[c]);
-		}
+	hasComponents<T extends keyof C>(entity: Entity, ...component: T[]): boolean {
+		let data = this.#storage.get(entity) as Storage<C>;
+		if (!data) { return false; }
+		return component.every(c => c in data);
+	}
 
-		hasComponents<T extends keyof Components>(entity: Entity, ...component: T[]): boolean {
-			let data = this.#storage.get(entity) as Storage;
-			if (!data) { return false; }
-			return component.every(c => c in data);
-		}
+	findEntities<T extends keyof C>(...components: T[]): Entity[] {
+		return [...this.#storage.keys()].filter(entity => this.hasComponents(entity, ...components));
+	}
 
-		findEntities<T extends keyof Components>(...components: T[]): Entity[] {
-			return [...this.#storage.keys()].filter(entity => this.hasComponents(entity, ...components));
-		}
+	queryComponent<T extends keyof C>(entity: Entity, component: T): QueryResult<C, T> {
+		let data = this.#storage.get(entity);
+		return data ? data[component] : data;
+	}
 
-		queryComponent<T extends keyof Components>(entity: Entity, component: T): QueryResult<T> {
-			let data = this.#storage.get(entity);
-			return data ? data[component] : data;
-		}
-
-		queryComponents<T extends keyof Components>(entity: Entity, ..._components: T[]): MultiQueryResult<T> | undefined {
-			return this.#storage.get(entity) as MultiQueryResult<T>;
-		}
+	queryComponents<T extends keyof C>(entity: Entity, ..._components: T[]): MultiQueryResult<C, T> | undefined {
+		return this.#storage.get(entity) as MultiQueryResult<C, T>;
 	}
 }
