@@ -112,6 +112,32 @@ class ActionLoop<W extends World> {
 
 let world = new World<Components>();
 
+class FairActorStrategy {
+	constructor(protected world: World<{actor: Actor}>) {
+
+	}
+
+	next(): Entity | null {
+		let entities = world.findEntities("actor");
+		if (!entities.length) { return null; }
+
+		// first non-waiting
+		let entity = entities.find(entity => world.queryComponent(entity, "actor")!.wait == 0);
+
+		if (entity) {
+			world.queryComponent(entity, "actor")!.wait = 1;
+			return entity;
+
+		} else {
+			entities.forEach(entity => world.queryComponent(entity, "actor")!.wait = 0);
+			return this.next(); // ...and return first
+		}
+	}
+}
+
+let s = new FairActorStrategy(world)
+
+
 let controller = {
 	async poll() {
 		let entity = procureEntity(world);
@@ -126,3 +152,10 @@ let loop = new ActionLoop<MyWorld>(controller);
 for await (let action of loop) {
 
 }
+
+
+Deno.test("scheduler 1", () => {
+	for (let i=0;i<10;i++) {
+		let { value } = iterator.next();
+	}
+})
