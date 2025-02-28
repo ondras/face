@@ -53,29 +53,8 @@ class Move extends Action<MyWorld> {
 	get duration() { return 10; }
 }
 
-function procureEntity(world: MyWorld) {
-	let entities = world.findEntities("actor");
-
-	let minWait = 1/0;
-	let minEntity: Entity | undefined;
-
-	entities.forEach(entity => {
-		let actor = world.queryComponent(entity, "actor")!;
-		if (actor.wait < minWait) {
-			minWait = actor.wait;
-			minEntity = entity;
-		}
-	});
-
-	entities.forEach(entity => {
-		world.queryComponent(entity, "actor")!.wait -= minWait;
-	});
-
-	return minEntity;
-}
-
-async function procureAction(world: MyWorld, entity: Entity) {
-	return new Move(world, entity, 0, 0);
+async function procureAction(entity: Entity) {
+	return new Move(entity, 0, 0);
 }
 
 interface LoopController<W extends World> {
@@ -112,30 +91,9 @@ class ActionLoop<W extends World> {
 
 let world = new World<Components>();
 
-class FairActorStrategy {
-	constructor(protected world: World<{actor: Actor}>) {
 
-	}
-
-	next(): Entity | null {
-		let entities = world.findEntities("actor");
-		if (!entities.length) { return null; }
-
-		// first non-waiting
-		let entity = entities.find(entity => world.queryComponent(entity, "actor")!.wait == 0);
-
-		if (entity) {
-			world.queryComponent(entity, "actor")!.wait = 1;
-			return entity;
-
-		} else {
-			entities.forEach(entity => world.queryComponent(entity, "actor")!.wait = 0);
-			return this.next(); // ...and return first
-		}
-	}
-}
-
-let s = new FairActorStrategy(world)
+let s1 = new FairActorScheduler(world)
+let s2 = new DurationActorScheduler(world)
 
 
 let controller = {

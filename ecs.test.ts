@@ -1,6 +1,6 @@
 // deno-lint-ignore-file prefer-const
 
-import { World } from "./ecs.ts";
+import { World, Actor, FairActorScheduler, DurationActorScheduler } from "./ecs.ts";
 import { assertEquals, assert } from "jsr:@std/assert";
 
 
@@ -16,9 +16,10 @@ export interface Visual {
 interface Components {
     position: Position;
     visual: Visual;
-	1: 2;
+	actor: Actor;
+	name: string;
+	speed: number;
 }
-
 
 Deno.test("component missing", () => {
 	let w = new World<Components>();
@@ -64,17 +65,23 @@ Deno.test("component search", () => {
 	w.addComponent(e3, "position", {x:1, y:2});
 	w.addComponent(e3, "visual", {ch:"?"});
 
-	let position = w.findEntities("position").map(result => result.entity);
-	let visual = w.findEntities("visual").map(result => result.entity);
+	let positionResults = w.findEntities("position");
+	let positionEntities = positionResults.map(result => result.entity);
+	let visualEntities = w.findEntities("visual").map(result => result.entity);
 
-	assert(position.includes(e1));
-	assert(!position.includes(e2));
-	assert(position.includes(e3));
+	assert(positionEntities.includes(e1));
+	assert(!positionEntities.includes(e2));
+	assert(positionEntities.includes(e3));
 
-	assert(!visual.includes(e1));
-	assert(visual.includes(e2));
-	assert(visual.includes(e3));
+	assert(!visualEntities.includes(e1));
+	assert(visualEntities.includes(e2));
+	assert(visualEntities.includes(e3));
 
+	positionResults.forEach(result => {
+		assert(result.entity);
+		assert(result.position);
+		assert(result.position.x);
+	})
 });
 
 Deno.test("initial components", () => {
@@ -106,4 +113,53 @@ Deno.test("nonexistant entity", () => {
 	assertEquals(w.queryComponent(e, "position"), undefined);
 	w.addComponent(e, "position", {x:1, y:2});
 	assertEquals(w.hasComponents(e, "position"), true);
+});
+
+Deno.test("fair scheduler", () => {
+	let w = new World<Components>();
+	let s = new FairActorScheduler(w);
+
+	assert(!s.next());
+
+	w.createEntity({actor:{wait: 0}, name:"1"});
+	w.createEntity({actor:{wait: 0}, name:"2"});
+	let log = "";
+
+	for (let i=0;i<10;i++) {
+		let entity = s.next();
+		assert(entity);
+		log += w.queryComponent(entity!, "name");
+	}
+
+	assertEquals(log, "1212121212");
+});
+
+Deno.test("duration scheduler", () => {
+	let w = new World<Components>();
+	let s = new DurationActorScheduler(w);
+
+	assert(!s.next());
+
+	w.createEntity({actor:{wait: 0}, name:"1", speed:100});
+	w.createEntity({actor:{wait: 0}, name:"2", speed:200});
+	w.createEntity({actor:{wait: 0}, name:"3", speed:50});
+	let log = "";
+
+	for (let i=0;i<14;i++) {
+		let entity = s.next();
+		assert(entity);
+
+		let speed = w.queryComponent(entity!, "speed")!;
+		s.commit(entity!, 1/speed);
+
+		log += w.queryComponent(entity!, "name");
+	}
+
+	assert(log.includes("1"));
+	assert(log.includes("2"));
+	assert(log.includes("3"));
+
+	assertEquals(log.match(/2/g)!.length, 8);
+	assertEquals(log.match(/1/g)!.length, 4);
+	assertEquals(log.match(/3/g)!.length, 2);
 });
