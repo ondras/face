@@ -16,6 +16,7 @@ export interface Visual {
 interface Components {
     position: Position;
     visual: Visual;
+	1: 2;
 }
 
 
@@ -63,8 +64,8 @@ Deno.test("component search", () => {
 	w.addComponent(e3, "position", {x:1, y:2});
 	w.addComponent(e3, "visual", {ch:"?"});
 
-	let position = w.findEntities("position");
-	let visual = w.findEntities("visual");
+	let position = w.findEntities("position").map(result => result.entity);
+	let visual = w.findEntities("visual").map(result => result.entity);
 
 	assert(position.includes(e1));
 	assert(!position.includes(e2));
@@ -73,6 +74,7 @@ Deno.test("component search", () => {
 	assert(!visual.includes(e1));
 	assert(visual.includes(e2));
 	assert(visual.includes(e3));
+
 });
 
 Deno.test("initial components", () => {
