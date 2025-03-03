@@ -19,9 +19,10 @@ type Storage<C> = Partial<C>;
 
 export class World<C = {}> {
 	#storage = new Map<Entity, Storage<C>>();
+	#counter = 0;
 
 	createEntity(initialComponents: Storage<C> = {}): Entity {
-		let entity = Math.random();
+		let entity = ++this.#counter;
 		if (initialComponents) { this.#storage.set(entity, structuredClone(initialComponents)); }
 		return entity;
 	}
