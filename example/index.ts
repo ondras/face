@@ -1,76 +1,26 @@
-import RlDisplay from "https://cdn.jsdelivr.net/gh/ondras/rl-display@master/src/rl-display.ts";
-import { World, Entity, FairActorScheduler, DurationActorScheduler } from "../ecs.ts";
+import { Entity, FairActorScheduler, DurationActorScheduler } from "../ecs.ts";
+import world from "./world.ts";
+import * as actions from "./actions.ts";
+import display from "./display.ts";
 
 
 function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-interface Position {
-    x: number;
-    y: number;
-}
-
-interface Visual {
-    ch: string;
-}
-
-interface Actor {
-	wait: number;
-}
-
-interface Blocks {
-	sight: boolean;
-	movement: boolean;
-}
-
-interface Components {
-    position: Position;
-    visual: Visual;
-    actor: Actor;
-	blocks: Blocks;
-}
-
-type MyWorld = World<Components>;
-
-class Action<W extends World> {
-	get duration() { return 0; }
-
-	canBePerformed(world: W) {}
-
-	async perform(world: MyWorld) {}
-}
-
-class Move extends Action<MyWorld> {
-	constructor(protected entity: Entity, protected x: number, protected y: number) {
-		super();
-	}
-
-	async perform(world: MyWorld) {
-		const { entity, x, y } = this;
-		let position = world.queryComponent(entity, "position");
-		if (!position) { throw "fixme"; }
-
-		position.x = x;
-		position.y = y;
-		// fixme render
-		console.log("moving", entity, "to", x, y);
-
-		display.move(entity, x, y);
-	}
-
-	get duration() { return 10; }
+const emptyVisual = {
+	ch: "."
 }
 
 async function procureAction(entity: Entity) {
-	return new Move(entity, 0, 0);
+	let dx = Math.random() > 0.5 ? 1 : -1;
+	let dy = Math.random() > 0.5 ? 1 : -1;
+	let position = world.queryComponent(entity, "position")!; // fixme
+	position.x += dx;
+	position.y += dy;
+	return new actions.Move(entity, position.x, position.y);
 }
 
-let world = new World<Components>();
-
-await customElements.whenDefined("rl-display");
-let display = document.querySelector("rl-display") as RlDisplay;
-
 function createWall(x: number, y: number) {
-	let visual = {ch:"@"};
+	let visual = {ch:"#"};
 	let position = {x, y};
 	let blocks = { sight: true, movement: true };
 	let id = world.createEntity({
@@ -99,9 +49,17 @@ function createBeing(x: number, y: number) {
 	return id;
 }
 
+for (let i=0;i<display.cols;i++) {
+	for (let j=0;j<display.rows;j++) {
+		if (i % (display.cols-1) && j % (display.rows-1)) {
+			display.draw(i, j, emptyVisual);
+		} else {
+			createWall(i, j);
+		}
+	}
+}
+
 let pc = createBeing(5, 5);
-
-
 let s1 = new FairActorScheduler(world);
 let s2 = new DurationActorScheduler(world);
 
@@ -111,5 +69,4 @@ while (true) {
 	if (!actor) { break; }
 	let action = await procureAction(actor);
 	await action.perform(world);
-	await sleep(1000);
 }
