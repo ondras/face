@@ -1,4 +1,4 @@
-import { World, Entity } from "../ecs.ts";
+import { World, Entity } from "../face.ts";
 import { MyWorld } from "../world.ts";
 import display from "./display.ts";
 

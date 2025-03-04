@@ -1,6 +1,6 @@
 // deno-lint-ignore-file prefer-const
 
-import { World, Actor, FairActorScheduler, DurationActorScheduler } from "./ecs.ts";
+import { World, Actor, FairActorScheduler, DurationActorScheduler } from "./face.ts";
 import { assertEquals, assert } from "jsr:@std/assert";
 
 

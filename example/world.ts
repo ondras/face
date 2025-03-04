@@ -1,4 +1,4 @@
-import { World } from "../ecs.ts";
+import { World } from "../face.ts";
 
 
 interface Position {

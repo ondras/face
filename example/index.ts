@@ -1,4 +1,4 @@
-import { Entity, FairActorScheduler, DurationActorScheduler } from "../ecs.ts";
+import { Entity, FairActorScheduler, DurationActorScheduler } from "../face.ts";
 import world from "./world.ts";
 import * as actions from "./actions.ts";
 import display from "./display.ts";
