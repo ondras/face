@@ -12,8 +12,8 @@ const emptyVisual = {
 function procureAction(entity: Entity) {
 	let brain = world.requireComponent(entity, "actor").brain;
 	switch (brain) {
-		case "ai": return ai.procureAction(entity);
-		case "ui": return ui.procureAction(entity);
+		case "ai": return ai.procureAction(entity, world);
+		case "ui": return ui.procureAction(entity, world);
 	}
 }
 
@@ -30,7 +30,6 @@ function createWall(x: number, y: number) {
 	display.draw(x, y, visual, {id, zIndex:0});
 
 	return id;
-
 }
 
 function createBeing(x: number, y: number) {
@@ -41,7 +40,8 @@ function createBeing(x: number, y: number) {
 		visual,
 		actor: {
 			wait:0,
-			brain:"ai"
+			brain:"ai",
+			needs:[]
 		}
 	});
 

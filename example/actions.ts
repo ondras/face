@@ -1,17 +1,23 @@
-import { World, Entity } from "../face.ts";
-import { MyWorld } from "../world.ts";
+import { Entity } from "../face.ts";
+import { MyWorld } from "./world.ts";
 import display from "./display.ts";
 
 
-class Action<W extends World> {
+export class Action {
 	get duration() { return 0; }
 
-	canBePerformed(world: W) {}
+	canBePerformed(world: MyWorld) {}
 
 	async perform(world: MyWorld) {}
 }
 
-export class Move extends Action<MyWorld> {
+export class Wait extends Action {
+	constructor(protected entity: Entity) {
+		super();
+	}
+}
+
+export class Move extends Action {
 	constructor(protected entity: Entity, protected x: number, protected y: number) {
 		super();
 	}

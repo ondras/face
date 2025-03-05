@@ -1,4 +1,4 @@
-import { World } from "../face.ts";
+import { World, Entity } from "../face.ts";
 
 
 interface Position {
@@ -10,10 +10,11 @@ interface Visual {
     ch: string;
 }
 
-interface Actor {
-	wait: number;
-    brain: "ai" | "ui";
-}
+type Need = { type:"attack"; target:Entity; }
+
+type HasBrain = { brain:"ui" } | { brain:"ai"; needs:Need[]; }
+
+type Actor = HasBrain & { wait: number; }
 
 interface Blocks {
 	sight: boolean;
