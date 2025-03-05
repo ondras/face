@@ -12,6 +12,7 @@ interface Visual {
 
 interface Actor {
 	wait: number;
+    brain: "ai" | "ui";
 }
 
 interface Blocks {

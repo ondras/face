@@ -1,22 +1,21 @@
 import { Entity, FairActorScheduler, DurationActorScheduler } from "../face.ts";
 import world from "./world.ts";
-import * as actions from "./actions.ts";
 import display from "./display.ts";
+import * as ui from "./ui.ts";
+import * as ai from "./ai.ts";
 
-
-function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 const emptyVisual = {
 	ch: "."
 }
 
 async function procureAction(entity: Entity) {
-	let dx = Math.random() > 0.5 ? 1 : -1;
-	let dy = Math.random() > 0.5 ? 1 : -1;
-	let position = world.queryComponent(entity, "position")!; // fixme
-	position.x += dx;
-	position.y += dy;
-	return new actions.Move(entity, position.x, position.y);
+	let brain = world.queryComponent(entity, "actor")!.brain; // fixme
+	switch (brain) {
+		case "ai": return ai.procureAction(entity);
+		case "ui": return ui.procureAction(entity);
+		default: // fixme
+	}
 }
 
 function createWall(x: number, y: number) {
@@ -41,7 +40,10 @@ function createBeing(x: number, y: number) {
 	let id = world.createEntity({
 		position,
 		visual,
-		actor: {wait:0}
+		actor: {
+			wait:0,
+			brain:"ai"
+		}
 	});
 
 	display.draw(x, y, visual, {id, zIndex:1});
