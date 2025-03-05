@@ -18,12 +18,10 @@ export class Move extends Action<MyWorld> {
 
 	async perform(world: MyWorld) {
 		const { entity, x, y } = this;
-		let position = world.queryComponent(entity, "position");
-		if (!position) { throw "fixme"; }
+		let position = world.requireComponent(entity, "position");
 
 		position.x = x;
 		position.y = y;
-		// fixme render
 		console.log("moving", entity, "to", x, y);
 
 		return display.move(entity, x, y);

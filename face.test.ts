@@ -1,7 +1,7 @@
 // deno-lint-ignore-file prefer-const
 
 import { World, Actor, FairActorScheduler, DurationActorScheduler } from "./face.ts";
-import { assertEquals, assert } from "jsr:@std/assert";
+import { assertEquals, assert, assertThrows } from "jsr:@std/assert";
 
 
 export interface Position {
@@ -25,7 +25,9 @@ Deno.test("component missing", () => {
 	let w = new World<Components>();
 	let e = w.createEntity();
 	assertEquals(w.hasComponents(e, "position"), false);
-	assertEquals(w.queryComponent(e, "position"), undefined);
+	assertEquals(w.getComponent(e, "position"), undefined);
+	assertThrows(() => w.requireComponent(e, "position"));
+	assertThrows(() => w.requireComponents(e, "position"));
 });
 
 Deno.test("component present", () => {
@@ -35,7 +37,8 @@ Deno.test("component present", () => {
 	w.addComponent(e, "position", pos);
 	assertEquals(w.hasComponents(e, "position"), true);
 	assertEquals(w.hasComponents(e, "position", "visual"), false);
-	assertEquals(w.queryComponent(e, "position"), pos);
+	assertEquals(w.getComponent(e, "position"), pos);
+	assertEquals(w.requireComponent(e, "position"), pos);
 });
 
 Deno.test("multiple components present", () => {
@@ -48,9 +51,13 @@ Deno.test("multiple components present", () => {
 
 	assertEquals(w.hasComponents(e, "position", "visual"), true);
 
-	let result = w.queryComponents(e, "position", "visual");
+	let result = w.getComponents(e, "position", "visual");
 	assertEquals(result?.position, pos);
 	assertEquals(result?.visual, vis);
+
+	result = w.requireComponents(e, "position", "visual");
+	assertEquals(result.position, pos);
+	assertEquals(result.visual, vis);
 });
 
 Deno.test("component search", () => {
@@ -110,7 +117,9 @@ Deno.test("nonexistant entity", () => {
 	let e = 1;
 
 	assertEquals(w.hasComponents(e, "position"), false);
-	assertEquals(w.queryComponent(e, "position"), undefined);
+	assertEquals(w.getComponent(e, "position"), undefined);
+	assertThrows(() => w.requireComponent(e, "position"));
+	assertThrows(() => w.requireComponents(e, "position"));
 	w.addComponent(e, "position", {x:1, y:2});
 	assertEquals(w.hasComponents(e, "position"), true);
 });
@@ -128,7 +137,7 @@ Deno.test("fair scheduler", () => {
 	for (let i=0;i<10;i++) {
 		let entity = s.next();
 		assert(entity);
-		log += w.queryComponent(entity!, "name");
+		log += w.getComponent(entity!, "name");
 	}
 
 	assertEquals(log, "1212121212");
@@ -149,10 +158,10 @@ Deno.test("duration scheduler", () => {
 		let entity = s.next();
 		assert(entity);
 
-		let speed = w.queryComponent(entity!, "speed")!;
+		let speed = w.getComponent(entity!, "speed")!;
 		s.commit(entity!, 1/speed);
 
-		log += w.queryComponent(entity!, "name");
+		log += w.getComponent(entity!, "name");
 	}
 
 	assert(log.includes("1"));

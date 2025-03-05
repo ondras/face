@@ -63,13 +63,25 @@ export class World<C = {}> {
 		return result;
 	}
 
-	queryComponent<T extends keyof C>(entity: Entity, component: T): QueryResult<C, T> {
+	getComponent<T extends keyof C>(entity: Entity, component: T): QueryResult<C, T> {
 		let data = this.#storage.get(entity);
 		return data ? data[component] : data;
 	}
 
-	queryComponents<T extends keyof C>(entity: Entity, ..._components: T[]): MultiQueryResult<C, T> | undefined {
+	getComponents<T extends keyof C>(entity: Entity, ..._components: T[]): MultiQueryResult<C, T> | undefined {
 		return this.#storage.get(entity) as MultiQueryResult<C, T>;
+	}
+
+	requireComponent<T extends keyof C>(entity: Entity, component: T): C[T] {
+		let result = this.getComponent(entity, component);
+		if (!result) { throw new Error(); }
+		return result;
+	}
+
+	requireComponents<T extends keyof C>(entity: Entity, ...components: T[]): MultiQueryResult<C, T> {
+		let result = this.getComponents(entity, ...components);
+		if (!result || !keysPresent(result, components)) { throw new Error(); }
+		return result;
 	}
 }
 
@@ -124,6 +136,6 @@ export class DurationActorScheduler {
 	}
 
 	commit(entity: Entity, duration: number) {
-		this.world.queryComponent(entity, "actor")!.wait += duration;
+		this.world.requireComponent(entity, "actor").wait += duration;
 	}
 }

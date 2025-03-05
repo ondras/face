@@ -9,12 +9,11 @@ const emptyVisual = {
 	ch: "."
 }
 
-async function procureAction(entity: Entity) {
-	let brain = world.queryComponent(entity, "actor")!.brain; // fixme
+function procureAction(entity: Entity) {
+	let brain = world.requireComponent(entity, "actor").brain;
 	switch (brain) {
 		case "ai": return ai.procureAction(entity);
 		case "ui": return ui.procureAction(entity);
-		default: // fixme
 	}
 }
 
