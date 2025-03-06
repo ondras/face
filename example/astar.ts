@@ -62,7 +62,13 @@ function createData<T>(node: T, g: number, h: number, prev?: Data<T>) {
 
 function reversePath<T>(data: Data<T>) {
 	let path: Data<T>[] = [data];
+	let current = data;
+	while (current.prev) {
+		current = current.prev;
+		path.push(current);
+	}
 
+	return path.reverse();
 }
 
 /*
