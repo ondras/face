@@ -1,7 +1,7 @@
-import { World, Entity } from "../face.ts";
+import { World as BaseWorld, Entity } from "../face.ts";
 
 
-interface Position {
+export interface Position {
     x: number;
     y: number;
 }
@@ -12,9 +12,13 @@ interface Visual {
 
 type Need = { type:"attack"; target:Entity; }
 
-type HasBrain = { brain:"ui" } | { brain:"ai"; needs:Need[]; }
+type UIBrain = { type:"ui"; };
+export type AIBrain = { type:"ai"; needs:Need[]; };
 
-type Actor = HasBrain & { wait: number; }
+type Actor = {
+    wait: number;
+    brain: UIBrain | AIBrain;
+}
 
 interface Blocks {
 	sight: boolean;
@@ -28,6 +32,6 @@ interface Components {
 	blocks: Blocks;
 }
 
-export type MyWorld = World<Components>;
+export type World = BaseWorld<Components>;
 
-export default new World<Components>();
+export default new BaseWorld<Components>();

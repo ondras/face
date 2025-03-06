@@ -1,14 +1,14 @@
 import { Entity } from "../face.ts";
-import { MyWorld } from "./world.ts";
+import { World } from "./world.ts";
 import display from "./display.ts";
 
 
 export class Action {
 	get duration() { return 0; }
 
-	canBePerformed(world: MyWorld) {}
+	canBePerformed(world: World) {}
 
-	async perform(world: MyWorld) {}
+	async perform(world: World) {}
 }
 
 export class Wait extends Action {
@@ -22,7 +22,7 @@ export class Move extends Action {
 		super();
 	}
 
-	async perform(world: MyWorld) {
+	async perform(world: World) {
 		const { entity, x, y } = this;
 		let position = world.requireComponent(entity, "position");
 
@@ -34,4 +34,14 @@ export class Move extends Action {
 	}
 
 	get duration() { return 10; }
+}
+
+export class Attack extends Action {
+	constructor(protected attacker: Entity, protected target: Entity) {
+		super();
+	}
+
+	async perform(world: World) {
+
+	}
 }

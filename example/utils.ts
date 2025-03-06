@@ -1,4 +1,4 @@
-import { MyWorld } from "./world.ts";
+import { World } from "./world.ts";
 
 declare global {
 	interface Array<T> {
@@ -25,12 +25,12 @@ export function sleep(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export function entitiesAt(x: number, y: number, world: MyWorld) {
+export function entitiesAt(x: number, y: number, world: World) {
 	// fixme spatial index
 	return world.findEntities("position").filter(result => result.position.x == x && result.position.y == y);
 }
 
-export function canMoveTo(x: number, y: number, world: MyWorld) {
+export function canMoveTo(x: number, y: number, world: World) {
 	let entities = entitiesAt(x, y, world);
 	return entities.every(e => {
 		let blocks = world.getComponent(e.entity, "blocks");

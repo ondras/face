@@ -11,8 +11,8 @@ const emptyVisual = {
 
 function procureAction(entity: Entity) {
 	let brain = world.requireComponent(entity, "actor").brain;
-	switch (brain) {
-		case "ai": return ai.procureAction(entity, world);
+	switch (brain.type) {
+		case "ai": return ai.procureAction(entity, brain, world);
 		case "ui": return ui.procureAction(entity, world);
 	}
 }
@@ -40,8 +40,7 @@ function createBeing(x: number, y: number) {
 		visual,
 		actor: {
 			wait:0,
-			brain:"ai",
-			needs:[]
+			brain: {type:"ai", needs:[]}
 		}
 	});
 
