@@ -4,12 +4,30 @@ import { Entity } from "../face.ts";
 import { World, Position } from "./world.ts";
 
 
+const NumpadOffsets = {
+	"Numpad1": [-1,  1],
+	"Numpad2": [ 0,  1],
+	"Numpad3": [ 1,  1],
+	"Numpad4": [-1,  0],
+	"Numpad6": [ 1,  0],
+	"Numpad7": [-1, -1],
+	"Numpad8": [ 0, -1],
+	"Numpad9": [ 1, -1]
+}
+
+const Aliases = {
+	"ArrowLeft": "Numpad4",
+	"ArrowRight": "Numpad6",
+	"ArrowUp": "Numpad8",
+	"ArrowDown": "Numpad",
+}
+
 function eventToAction(e: KeyboardEvent, entity: Entity, pos: Position) {
-	switch (e.code) {
-		case "ArrowLeft": return new actions.Move(entity, pos.x-1, pos.y);
-		case "ArrowRight": return new actions.Move(entity, pos.x+1, pos.y);
-		case "ArrowUp": return new actions.Move(entity, pos.x, pos.y-1);
-		case "ArrowDown": return new actions.Move(entity, pos.x, pos.y+1);
+	let { code } = e;
+	if (code in Aliases) { code = Aliases[code as keyof typeof Aliases]; }
+	if (code in NumpadOffsets) {
+		let offset = NumpadOffsets[code as keyof typeof NumpadOffsets];
+		return new actions.Move(entity, pos.x+offset[0], pos.y+offset[1]);
 	}
 }
 

@@ -33,7 +33,7 @@ function getCloserTo(entity: Entity, position: Position, world: World) {
 
 	let dirs = utils.DIRS.toSorted(CMP);
 	if (dirs.length > 0) {
-		let bestDir = dirs.shift();
+		let bestDir = dirs.shift()!;
 		return new actions.Move(entity, source.x+bestDir[0], source.y+bestDir[1]);
 	} else {
 		return wander(entity, world);

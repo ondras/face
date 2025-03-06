@@ -1,9 +1,14 @@
 import { World as BaseWorld, Entity } from "../face.ts";
 
+interface Blocks {
+	sight: boolean;
+	movement: boolean;
+}
 
 export interface Position {
     x: number;
     y: number;
+    blocks: Blocks;
 }
 
 interface Visual {
@@ -20,16 +25,11 @@ type Actor = {
     brain: UIBrain | AIBrain;
 }
 
-interface Blocks {
-	sight: boolean;
-	movement: boolean;
-}
 
 interface Components {
     position: Position;
     visual: Visual;
     actor: Actor;
-	blocks: Blocks;
 }
 
 export type World = BaseWorld<Components>;

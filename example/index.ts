@@ -19,12 +19,11 @@ function procureAction(entity: Entity) {
 
 function createWall(x: number, y: number) {
 	let visual = {ch:"#"};
-	let position = {x, y};
 	let blocks = { sight: true, movement: true };
+	let position = {x, y, blocks};
 	let id = world.createEntity({
 		position,
-		visual,
-		blocks
+		visual
 	});
 
 	display.draw(x, y, visual, {id, zIndex:0});
@@ -34,7 +33,7 @@ function createWall(x: number, y: number) {
 
 function createPc(x: number, y: number) {
 	let visual = {ch:"@", fg:"red"};
-	let position = {x, y};
+	let position = {x, y, blocks:{movement:true, sight:false}};
 
 	let id = world.createEntity({
 		position,
@@ -52,7 +51,7 @@ function createPc(x: number, y: number) {
 
 function createOrc(x: number, y: number, target: Entity) {
 	let visual = {ch:"o", fg:"lime"};
-	let position = {x, y};
+	let position = {x, y, blocks:{movement:true, sight:false}};
 	let task = {
 		type: "attack",
 		target
