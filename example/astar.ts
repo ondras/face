@@ -1,59 +1,68 @@
-interface AStarNode {
-	id: string;
+interface Data<T> {
+	node: T;
 	f: number;
 	g: number;
 	h: number;
+	prev?: Data<T>;
 }
 
-class AStar {
-	protected open = new Set<AStarNode>();
-	protected closed = new Set<AStarNode>();
+interface Options<T> {
+	neighbors(node: T): T[];
+	cost(from: T, to: T): number;
+	heuristic(from: T, to: T): number;
+}
 
-	constructor(from, to) {
-		let g = 0;
-		let h = heuristic(from, to);
-		let fromNode = {
-			id: from,
-			g,
-			h,
-			f: g+h
-		}
+function* pasta<T>(from: T, to: T, options: Options<T>) {
+	let open = new Map<T, Data<T>>();
+	let closed = new Map<T, Data<T>>();
 
-		this.open.add(fromNode);
-	}
+	let h = options.heuristic(from, to);
+	let data = createData(from, 0, h);
+	open.set(from, data);
 
-	next() {
+	while (open.size > 0) {
 		// najit ten z open, co ma nejnizsi f
 		let minf = 1/0;
-		let minNode = undefined;
-		this.open.forEach(node => {
-			if (node.f < minf) {
-				minNode = node;
-				minf = node.f;
+		let current;
+		for (let data of open.values()) {
+			if (data.f < minf) {
+				current = data;
+				minf = data.f;
 			}
-		});
-		if (!minNode) { return; } // neni kde hledat?
-
-		if (minNode == to) { hotovo; }
-
-		this.open.delete(minNode);
-		this.closed.add(minNode);
-
-		let neighbors = getNeighbors(minNode);
-		for (let neighbor of neighbors) {
-			// pokud je v closed, nechceme ho -> mozna tohle garantuje uz getNeighbors
-			// pokud je v open ... tak nevim co s nim
-			let h = heuristic(neighbor, to)
-			let g = minNode.g + distance(minNode, neighbor)
-			let node = {
-				id: neighbor,
-				g,
-				h,
-				f: g+h
-			}
-			this.open.add(node);
 		}
+		if (!current) { return; } // neni kde hledat?
+
+		if (current.node == to) { hotovo; }
+
+		open.delete(current.node);
+		closed.set(current.node, current);
+
+		for (let neighbor of options.neighbors(current.node)) {
+			// pokud je v closed, nechceme ho?
+			// pokud je v open ... tak nevim co s nim?
+			let g = current.g + options.cost(current.node, neighbor)
+			let h = options.heuristic(neighbor, to);
+			let data = createData(neighbor, g, h, current);
+			open.set(neighbor, data);
+		}
+
+		yield { open, closed };
 	}
+}
+
+function createData<T>(node: T, g: number, h: number, prev?: Data<T>) {
+	return {
+		node,
+		g,
+		h,
+		f: g+h,
+		prev
+	}
+}
+
+function reversePath<T>(data: Data<T>) {
+	let path: Data<T>[] = [data];
+
 }
 
 /*
@@ -63,3 +72,41 @@ a b c X e
 f g X X j
 k l m n $
 */
+
+class AStar<T> {
+	protected open = new Map<T, Data<T>>();
+	protected closed = new Map<T, Data<T>>();
+
+	constructor(from: T, to: T, options: Options<T>) {
+		let h = options.heuristic(from, to);
+		let data = createData(from, 0, h);
+		this.open.set(from, data);
+	}
+
+	next(options: Options<T>) {
+		// najit ten z open, co ma nejnizsi f
+		let minf = 1/0;
+		let current;
+		for (let data of this.open.values()) {
+			if (data.f < minf) {
+				current = data;
+				minf = data.f;
+			}
+		}
+		if (!current) { return; } // neni kde hledat?
+
+		if (current.node == to) { hotovo; }
+
+		this.open.delete(current.node);
+		this.closed.set(current.node, current);
+
+		for (let neighbor of options.neighbors(current.node)) {
+			// pokud je v closed, nechceme ho?
+			// pokud je v open ... tak nevim co s nim?
+			let g = current.g + options.cost(current.node, neighbor)
+			let h = options.heuristic(neighbor, to);
+			let data = createData(neighbor, g, h, current);
+			this.open.set(neighbor, data);
+		}
+	}
+}
