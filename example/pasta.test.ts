@@ -16,45 +16,45 @@ let WALLS_SIDE = new Set(["N", "O"]);
 let WALLS_IMPOSSIBLE = new Set(["M", "N", "O", "R", "W"]);
 
 
-Deno.test("walls, topo 8, h=euclidean", () => {
-	let options = createOptions({topo:8, walls:"mid", h:"e"});
+Deno.test("walls, topo 8, cost=euclidean", () => {
+	let options = createOptions({topo:8, walls:"mid", cost:"e"});
 	let path = new Pasta("A", "Y", options).run();
 	assertEquals(path.join(""), "AGHIOTY");
 });
 
-Deno.test.only("empty, topo 8, h=g", () => {
-	let options = createOptions({topo:8, walls:false, h:"g"});
+Deno.test("empty, topo 8", () => {
+	let options = createOptions({topo:8, walls:false});
 	let path = new Pasta("A", "Y", options).run();
 	assertEquals(path.join(""), "AGMSY");
 });
 
-Deno.test("walls, topo 8, h=g", () => {
-	let options = createOptions({topo:8, walls:"mid", h:"g"});
+Deno.test("walls, topo 8", () => {
+	let options = createOptions({topo:8, walls:"mid"});
 	let path = new Pasta("A", "Y", options).run();
 	assertEquals(path.join(""), "AGMIOTY");
 });
 
-Deno.test("impossible, topo 8, h=g", () => {
-	let options = createOptions({topo:8, walls:"impossible", h:"g"});
+Deno.test("impossible, topo 8", () => {
+	let options = createOptions({topo:8, walls:"impossible"});
 	let path = new Pasta("A", "Y", options).run();
 	assert(!path);
 });
 
-Deno.test("empty, topo 4, h=g", () => {
-	let options = createOptions({topo:4, walls:false, h:"g"});
+Deno.test("empty, topo 4", () => {
+	let options = createOptions({topo:4, walls:false});
 	let path = new Pasta("A", "Y", options).run();
 	assertEquals(path.join(""), "ABCDEJOTY");
 });
 
-Deno.test("walls, topo 4, h=g", () => {
-	let options = createOptions({topo:4, walls:"side", h:"g"});
+Deno.test("walls, topo 4", () => {
+	let options = createOptions({topo:4, walls:"side"});
 	let path = new Pasta("A", "Y", options).run();
 	assertEquals(path.join(""), "ABCHMRSTY");
 });
 
 
-Deno.test("detailed, empty, topo 8, h=g", () => {
-	let options = createOptions({topo:8, walls:false, h:"g"});
+Deno.test("detailed, empty, topo 8", () => {
+	let options = createOptions({topo:8, walls:false});
 	let p = new Pasta("A", "Y", options);
 
 	let result = p.next();
@@ -84,26 +84,36 @@ Deno.test("detailed, empty, topo 8, h=g", () => {
 interface Conf {
 	topo: 4 | 8;
 	walls: false | "mid" | "side" | "impossible";
-	h: "g" | "e";
+	cost?: "e" | "o";
+	h?: "e" | "o";
 }
 function createOptions(conf: Conf) {
 	function cost(from: string, to: string) {
 		let c1 = idToCoords(from);
 		let c2 = idToCoords(to);
-		switch (conf.topo) {
-			case 4: return utils.dist4(...c1, ...c2);
-			case 8: return utils.dist8(...c1, ...c2);
+		if (conf.cost) {
+			switch (conf.cost) {
+				case "e": return utils.distEuclidean(...c1, ...c2);
+				case "o": return utils.distOctile(...c1, ...c2);
+			}
+		} else {
+			switch (conf.topo) {
+				case 4: return utils.dist4(...c1, ...c2);
+				case 8: return utils.dist8(...c1, ...c2);
+			}
 		}
 	}
 
 	function heuristic(from: string, to: string) {
-		switch (conf.h) {
-			case "g": return cost(from, to);
-			case "e":
-				let c1 = idToCoords(from);
-				let c2 = idToCoords(to);
-				return utils.distEuclidean(...c1, ...c2);
-			break;
+		if (conf.h) {
+			let c1 = idToCoords(from);
+			let c2 = idToCoords(to);
+			switch (conf.h) {
+				case "e": return utils.distEuclidean(...c1, ...c2);
+				case "o": return utils.distOctile(...c1, ...c2);
+			}
+		} else {
+			return cost(from, to);
 		}
 	}
 

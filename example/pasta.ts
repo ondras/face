@@ -56,12 +56,15 @@ export class Pasta<T> {
 		closed.set(current.node, current);
 
 		for (let neighbor of options.neighbors(current.node)) {
-			// pokud je v closed, nechceme ho?
-			if (closed.has(neighbor)) { continue; }
-			// pokud je v open ... tak nevim co s nim?
-			if (open.has(neighbor)) { continue; }
+			if (closed.has(neighbor)) { continue; } // already processed, skip
 
 			let g = current.g + options.cost(current.node, neighbor)
+			if (open.has(neighbor)) {
+				let existing = open.get(neighbor)!;
+				if (g >= existing.g) { continue; } // our values are worse, skip this neighbor
+				open.delete(neighbor); // we have better values: remove existing and re-add with better
+			}
+
 			let h = options.heuristic(neighbor, target);
 			let data = createData(neighbor, g, h, current);
 			open.set(neighbor, data);

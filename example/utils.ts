@@ -65,5 +65,5 @@ const OCTILE_DIAGONAL = 3;
 export function distOctile(x1: number, y1: number, x2: number, y2: number) {
 	let dx = Math.abs(x1 - x2);
 	let dy = Math.abs(y1 - y2);
-	OCTILE_CARDINAL * Math.max(dx, dy) + (OCTILE_DIAGONAL-OCTILE_CARDINAL) * Math.min(dx, dy)
+	return OCTILE_CARDINAL * Math.max(dx, dy) + (OCTILE_DIAGONAL-OCTILE_CARDINAL) * Math.min(dx, dy)
 }
