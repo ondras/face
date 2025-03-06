@@ -10,10 +10,10 @@ interface Visual {
     ch: string;
 }
 
-type Need = { type:"attack"; target:Entity; }
+type Task = { type:"attack"; target:Entity; }
 
 type UIBrain = { type:"ui"; };
-export type AIBrain = { type:"ai"; needs:Need[]; };
+export type AIBrain = { type:"ai"; task?:Task; };
 
 type Actor = {
     wait: number;

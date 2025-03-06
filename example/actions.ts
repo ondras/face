@@ -1,6 +1,7 @@
 import { Entity } from "../face.ts";
 import { World } from "./world.ts";
 import display from "./display.ts";
+import * as utils from "./utils.ts";
 
 
 export class Action {
@@ -20,6 +21,10 @@ export class Wait extends Action {
 export class Move extends Action {
 	constructor(protected entity: Entity, protected x: number, protected y: number) {
 		super();
+	}
+
+	canBePerformed(world: World) {
+		return utils.canMoveTo(this.x, this.y, world);
 	}
 
 	async perform(world: World) {
@@ -42,6 +47,7 @@ export class Attack extends Action {
 	}
 
 	async perform(world: World) {
-
+		const { attacker, target } = this;
+		console.log("entity", attacker, "attacking", target);
 	}
 }

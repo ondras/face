@@ -32,15 +32,38 @@ function createWall(x: number, y: number) {
 	return id;
 }
 
-function createBeing(x: number, y: number) {
-	let visual = {ch:"@"};
+function createPc(x: number, y: number) {
+	let visual = {ch:"@", fg:"red"};
 	let position = {x, y};
+
 	let id = world.createEntity({
 		position,
 		visual,
 		actor: {
 			wait:0,
-			brain: {type:"ai", needs:[]}
+			brain: {type:"ui"}
+		}
+	});
+
+	display.draw(x, y, visual, {id, zIndex:1});
+
+	return id;
+}
+
+function createOrc(x: number, y: number, target: Entity) {
+	let visual = {ch:"o", fg:"lime"};
+	let position = {x, y};
+	let task = {
+		type: "attack",
+		target
+	} as const;
+
+	let id = world.createEntity({
+		position,
+		visual,
+		actor: {
+			wait:0,
+			brain: {type:"ai", task}
 		}
 	});
 
@@ -59,7 +82,8 @@ for (let i=0;i<display.cols;i++) {
 	}
 }
 
-let pc = createBeing(5, 5);
+let pc = createPc(5, 5);
+let orc = createOrc(15, 5, pc);
 let s1 = new FairActorScheduler(world);
 let s2 = new DurationActorScheduler(world);
 

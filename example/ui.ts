@@ -19,6 +19,7 @@ export async function procureAction(entity: Entity, world: World): Promise<actio
 	while (true) {
 		let event = await utils.readKey();
 		let action = eventToAction(event, entity, position);
-		return action;
+		if (!action) { continue; }
+		if (action.canBePerformed(world)) { return action; }
 	}
 }
