@@ -59,22 +59,22 @@ Deno.test("detailed, empty, topo 8", () => {
 
 	let result = p.next();
 	assert(!result, "first iteration - done");
-	assertMapKeys(p.closed, "A", "first iteration - closed set");
+	assertSetKeys(p.closed, "A", "first iteration - closed set");
 	assertMapKeys(p.open, "BFG", "first iteration - open set");
 
 	result = p.next();
 	assert(!result, "second iteration - done");
-	assertMapKeys(p.closed, "AG", "second iteration - closed set");
+	assertSetKeys(p.closed, "AG", "second iteration - closed set");
 	assertMapKeys(p.open, "BCFHKLM", "second iteration - open set");
 
 	result = p.next();
 	assert(!result, "third iteration - done");
-	assertMapKeys(p.closed, "AGM", "third iteration - closed set");
+	assertSetKeys(p.closed, "AGM", "third iteration - closed set");
 	assertMapKeys(p.open, "BCFHIKLNQRS", "third iteration - open set");
 
 	result = p.next();
 	assert(!result, "fourth iteration - done");
-	assertMapKeys(p.closed, "AGMS", "fourth iteration - closed set");
+	assertSetKeys(p.closed, "AGMS", "fourth iteration - closed set");
 	assertMapKeys(p.open, "BCFHIKLNOQRTWXY", "fourth iteration - open set");
 
 	result = p.next();
@@ -150,6 +150,10 @@ function idToCoords(id: string) {
 function coordsToId(x: number, y: number) {
 	let index = y * COLS + x;
 	return String.fromCharCode(index + "A".charCodeAt(0));
+}
+
+function assertSetKeys(set: Set<string>, expected: string, message?: string) {
+	assertEquals([...set].sort().join(""), expected, message);
 }
 
 function assertMapKeys(map: Map<string, any>, expected: string, message?: string) {

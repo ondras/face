@@ -14,7 +14,7 @@ interface Options<T> {
 
 export class Pasta<T> {
 	open = new Map<T, Data<T>>();
-	closed = new Map<T, Data<T>>();
+	closed = new Set<T>();
 	options: Options<T>;
 	target: T;
 
@@ -39,21 +39,14 @@ export class Pasta<T> {
 	next() {
 		const { open, closed, options, target } = this;
 
-		// najit ten z open, co ma nejnizsi f
-		let minf = 1/0;
-		let current;
-		for (let data of open.values()) {
-			if (data.f < minf) {
-				current = data;
-				minf = data.f;
-			}
-		}
-		if (!current) { return; } // neni kde hledat?
+		// pick the node with lowest f
+		let current = findBest(open);
+		if (!current) { return; } // should not happen, as open set should not be empty
 
 		if (current.node == target) { return reversePath(current).map(data => data.node); }
 
 		open.delete(current.node);
-		closed.set(current.node, current);
+		closed.add(current.node);
 
 		for (let neighbor of options.neighbors(current.node)) {
 			if (closed.has(neighbor)) { continue; } // already processed, skip
@@ -72,10 +65,7 @@ export class Pasta<T> {
 	}
 }
 
-export function pasta<T>(from: T, to: T, options: Options<T>) {
-	let p = new Pasta(from, to, options);
-	return p.run();
-}
+export function pasta<T>(from: T, to: T, options: Options<T>) { return new Pasta(from, to, options).run(); }
 
 function createData<T>(node: T, g: number, h: number, prev?: Data<T>) {
 	return {
@@ -96,4 +86,16 @@ function reversePath<T>(data: Data<T>) {
 	}
 
 	return path.reverse();
+}
+
+function findBest<T>(open: Map<T, Data<T>>) {
+	let minf = 1/0;
+	let best;
+	for (let data of open.values()) {
+		if (data.f < minf) {
+			best = data;
+			minf = data.f;
+		}
+	}
+	return best;
 }
