@@ -1,2 +1,2 @@
 index.js: *.ts
-	deno run -A jsr:@orgsoft/dsbuild --in index.ts --out $@
+	DENO_ENV=development deno run -A jsr:@orgsoft/dsbuild --in index.ts --out $@

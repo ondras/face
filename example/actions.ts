@@ -52,7 +52,7 @@ export class Attack extends Action {
 	async perform(world: World) {
 		const { attacker, target } = this;
 		console.log("entity", attacker, "attacking", target);
-		if (Math.random() > 0.5) {
+		if (Math.random() > 0.1) {
 			console.log("hit");
 			return new Damage(attacker, target);
 		} else {

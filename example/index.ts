@@ -102,6 +102,6 @@ while (true) {
 		if (!actor) { break; }
 		action = await procureAction(actor);
 	}
-	console.log("got action", action)
+	console.log("got action", action.constructor.name)
 	action = await action.perform(world) || undefined;
 }
