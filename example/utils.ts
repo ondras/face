@@ -1,4 +1,4 @@
-import { World } from "./world.ts";
+import { World, Position } from "./world.ts";
 
 declare global {
 	interface Array<T> {
@@ -19,10 +19,14 @@ export const DIRS = [
 	[-1, 1],
 	[-1, 0],
 	[-1, -1]
-];
+] as [number, number][];
 
 export function sleep(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export function ring(center: Position) {
+	return DIRS.map(([dx, dy]) => [center.x+dx, center.y+dy] as [number, number]);
 }
 
 export function entitiesAt(x: number, y: number, world: World) {
@@ -32,7 +36,11 @@ export function entitiesAt(x: number, y: number, world: World) {
 
 export function canMoveTo(x: number, y: number, world: World) {
 	let entities = entitiesAt(x, y, world);
-	return entities.every(e => !e.position.blocks.movement);
+	return entities.every(e => {
+		let blocks = world.getComponent(e.entity, "blocks");
+		if (blocks?.movement) { return false; }
+		return true;
+	});
 }
 
 export async function readKey(): Promise<KeyboardEvent> {

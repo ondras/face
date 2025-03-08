@@ -19,7 +19,7 @@ const Aliases = {
 	"ArrowLeft": "Numpad4",
 	"ArrowRight": "Numpad6",
 	"ArrowUp": "Numpad8",
-	"ArrowDown": "Numpad",
+	"ArrowDown": "Numpad2",
 }
 
 function eventToAction(e: KeyboardEvent, entity: Entity, pos: Position) {

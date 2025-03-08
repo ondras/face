@@ -8,11 +8,14 @@ interface Blocks {
 export interface Position {
     x: number;
     y: number;
-    blocks: Blocks;
 }
 
 interface Visual {
     ch: string;
+}
+
+interface Health {
+    hp: number;
 }
 
 type Task = { type:"attack"; target:Entity; }
@@ -30,6 +33,8 @@ interface Components {
     position: Position;
     visual: Visual;
     actor: Actor;
+    blocks: Blocks;
+    health: Health;
 }
 
 export type World = BaseWorld<Components>;

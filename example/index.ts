@@ -1,4 +1,5 @@
 import { Entity, FairActorScheduler, DurationActorScheduler } from "../face.ts";
+import { Action } from "./actions.ts";
 import world from "./world.ts";
 import display from "./display.ts";
 import * as ui from "./ui.ts";
@@ -20,10 +21,11 @@ function procureAction(entity: Entity) {
 function createWall(x: number, y: number) {
 	let visual = {ch:"#"};
 	let blocks = { sight: true, movement: true };
-	let position = {x, y, blocks};
+	let position = {x, y};
 	let id = world.createEntity({
 		position,
-		visual
+		visual,
+		blocks
 	});
 
 	display.draw(x, y, visual, {id, zIndex:0});
@@ -33,25 +35,29 @@ function createWall(x: number, y: number) {
 
 function createPc(x: number, y: number) {
 	let visual = {ch:"@", fg:"red"};
-	let position = {x, y, blocks:{movement:true, sight:false}};
+	let blocks = {movement:true, sight:false};
+	let position = {x, y, };
 
 	let id = world.createEntity({
 		position,
 		visual,
+		blocks,
 		actor: {
 			wait:0,
 			brain: {type:"ui"}
-		}
+		},
+		health: { hp: 10 }
 	});
 
-	display.draw(x, y, visual, {id, zIndex:1});
+	display.draw(x, y, visual, {id, zIndex:2});
 
 	return id;
 }
 
 function createOrc(x: number, y: number, target: Entity) {
 	let visual = {ch:"o", fg:"lime"};
-	let position = {x, y, blocks:{movement:true, sight:false}};
+	let position = {x, y, };
+	let blocks = {movement:true, sight:false};
 	let task = {
 		type: "attack",
 		target
@@ -60,13 +66,15 @@ function createOrc(x: number, y: number, target: Entity) {
 	let id = world.createEntity({
 		position,
 		visual,
+		blocks,
 		actor: {
 			wait:0,
 			brain: {type:"ai", task}
-		}
+		},
+		health: { hp: 1 }
 	});
 
-	display.draw(x, y, visual, {id, zIndex:1});
+	display.draw(x, y, visual, {id, zIndex:2});
 
 	return id;
 }
@@ -87,9 +95,13 @@ let s1 = new FairActorScheduler(world);
 let s2 = new DurationActorScheduler(world);
 
 
+let action: Action | undefined;
 while (true) {
-	let actor = s1.next();
-	if (!actor) { break; }
-	let action = await procureAction(actor);
-	await action.perform(world);
+	if (!action) {
+		let actor = s1.next();
+		if (!actor) { break; }
+		action = await procureAction(actor);
+	}
+	console.log("got action", action)
+	action = await action.perform(world) || undefined;
 }

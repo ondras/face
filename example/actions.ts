@@ -4,18 +4,21 @@ import display from "./display.ts";
 import * as utils from "./utils.ts";
 
 
-export class Action {
-	get duration() { return 0; }
 
-	canBePerformed(world: World) {}
+type ValueOrPromise<T> = T | Promise<T>;
 
-	async perform(world: World) {}
+export abstract class Action {
+	get duration() { return 1; }
+	canBePerformed(world: World) { return true; }
+	abstract perform(world: World): ValueOrPromise<Action | void>;
 }
 
 export class Wait extends Action {
 	constructor(protected entity: Entity) {
 		super();
 	}
+
+	perform(world: World) {}
 }
 
 export class Move extends Action {
@@ -49,5 +52,34 @@ export class Attack extends Action {
 	async perform(world: World) {
 		const { attacker, target } = this;
 		console.log("entity", attacker, "attacking", target);
+		if (Math.random() > 0.5) {
+			console.log("hit");
+			return new Damage(attacker, target);
+		} else {
+			console.log("miss");
+		}
+	}
+}
+
+export class Damage extends Action {
+	constructor(protected attacker: Entity, protected target: Entity) {
+		super();
+	}
+
+	perform(world: World) {
+		const { attacker, target } = this;
+		let health = world.requireComponent(target, "health");
+		health.hp -= 1;
+		if (health.hp <= 0) { return new Death(target); }
+	}
+}
+
+export class Death extends Action {
+	constructor(protected entity: Entity) {
+		super();
+	}
+
+	perform(world: World) {
+
 	}
 }
