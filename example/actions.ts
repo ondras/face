@@ -10,7 +10,7 @@ type ValueOrPromise<T> = T | Promise<T>;
 export abstract class Action {
 	get duration() { return 1; }
 	canBePerformed(world: World) { return true; }
-	abstract perform(world: World): ValueOrPromise<Action | void>;
+	abstract perform(world: World): ValueOrPromise<Action[]>;
 }
 
 export class Wait extends Action {
@@ -18,7 +18,7 @@ export class Wait extends Action {
 		super();
 	}
 
-	perform(world: World) {}
+	perform(world: World) { return []; }
 }
 
 export class Move extends Action {
@@ -54,9 +54,10 @@ export class Attack extends Action {
 		console.log("entity", attacker, "attacking", target);
 		if (Math.random() > 0.1) {
 			console.log("hit");
-			return new Damage(attacker, target);
+			return [new Damage(attacker, target)];
 		} else {
 			console.log("miss");
+			return [];
 		}
 	}
 }
@@ -70,7 +71,8 @@ export class Damage extends Action {
 		const { attacker, target } = this;
 		let health = world.requireComponent(target, "health");
 		health.hp -= 1;
-		if (health.hp <= 0) { return new Death(target); }
+		if (health.hp <= 0) { return [new Death(target)]; }
+		return [];
 	}
 }
 
@@ -80,6 +82,6 @@ export class Death extends Action {
 	}
 
 	perform(world: World) {
-
+		return [];
 	}
 }

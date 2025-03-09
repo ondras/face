@@ -95,13 +95,17 @@ let s1 = new FairActorScheduler(world);
 let s2 = new DurationActorScheduler(world);
 
 
-let action: Action | undefined;
+let actionQueue: Action[] = [];
 while (true) {
-	if (!action) {
+	if (!actionQueue.length) {
 		let actor = s1.next();
 		if (!actor) { break; }
-		action = await procureAction(actor);
+		let action = await procureAction(actor);
+		actionQueue.push(action);
 	}
+	let action = actionQueue.shift()!;
 	console.log("got action", action.constructor.name)
-	action = await action.perform(world) || undefined;
+
+	let newActions = await action.perform(world);
+	actionQueue.unshift(...newActions);
 }
