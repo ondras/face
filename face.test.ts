@@ -1,6 +1,6 @@
 // deno-lint-ignore-file prefer-const
 
-import { World, Actor, FairActorScheduler, DurationActorScheduler } from "./face.ts";
+import { World, Actor, FairActorScheduler, DurationActorScheduler, PubSub } from "./face.ts";
 import { assertEquals, assert, assertThrows } from "jsr:@std/assert";
 
 
@@ -19,6 +19,10 @@ interface Components {
 	actor: Actor;
 	name: string;
 	speed: number;
+}
+
+interface Messages {
+	"a": {b:string}
 }
 
 Deno.test("component missing", () => {
@@ -171,4 +175,23 @@ Deno.test("duration scheduler", () => {
 	assertEquals(log.match(/2/g)!.length, 8);
 	assertEquals(log.match(/1/g)!.length, 4);
 	assertEquals(log.match(/3/g)!.length, 2);
+});
+
+Deno.test("pubsub", async () => {
+	let pubsub = new PubSub<Messages>();
+	let count = 0;
+
+	let listener = async function(data: Messages["a"]) {
+		await new Promise(resolve => setTimeout(resolve, 5));
+		assertEquals(data.b, "test");
+		count++;
+	}
+
+	pubsub.subscribe("a", listener);
+	await pubsub.publish("a", {b:"test"});
+	assertEquals(count, 1);
+
+	pubsub.unsubscribe("a", listener);
+	await pubsub.publish("a", {b:"test"});
+	assertEquals(count, 1);
 });

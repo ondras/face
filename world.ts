@@ -1,5 +1,7 @@
 // deno-lint-ignore-file prefer-const
 
+import { PubSub } from "./pubsub.ts";
+
 // "public" types used as return values of public methods
 export type Entity = number;
 
@@ -11,36 +13,48 @@ type FindResult<C, T extends keyof C> = {
 	[K in T]: C[K];
 } & { entity: Entity };
 
+export interface Messages {
+	"component-add": {},
+	"component-remove": {}
+}
+
 // private
 type Storage<C> = Partial<C>;
 
 export class World<C = object> {
-	#storage = new Map<Entity, Storage<C>>();
-	#counter = 0;
+	protected storage = new Map<Entity, Storage<C>>();
+	protected counter = 0;
+	protected pubsub?: PubSub<Messages>;
 
 	createEntity(initialComponents: Storage<C> = {}): Entity {
-		let entity = ++this.#counter;
-		if (initialComponents) { this.#storage.set(entity, structuredClone(initialComponents)); }
+		let entity = ++this.counter;
+		if (initialComponents) { this.storage.set(entity, structuredClone(initialComponents)); }
 		return entity;
 	}
 
 	addComponent<T extends keyof C>(entity: Entity, componentName: T, componentData: C[T]) {
-		let data = this.#storage.get(entity);
+		const { storage, pubsub } = this;
+		let data = storage.get(entity);
 		if (!data) {
 			data = {};
-			this.#storage.set(entity, data);
+			storage.set(entity, data);
 		}
 		data[componentName] = componentData;
+		pubsub?.publish("component-add", {});
 	}
 
 	removeComponent<T extends keyof C>(entity: Entity, ...component: T[]) {
-		let data = this.#storage.get(entity) as Storage<C>;
+		const { storage, pubsub } = this;
+		let data = storage.get(entity) as Storage<C>;
 		// fixme nonexistant?
-		component.forEach(c => delete data[c]);
+		component.forEach(c => {
+			delete data[c];
+			pubsub?.publish("component-remove", {});
+		});
 	}
 
 	hasComponents<T extends keyof C>(entity: Entity, ...components: T[]): boolean {
-		let data = this.#storage.get(entity);
+		let data = this.storage.get(entity);
 		if (!data) { return false; }
 		return keysPresent(data, components);
 	}
@@ -48,7 +62,7 @@ export class World<C = object> {
 	findEntities<T extends keyof C>(...components: T[]): FindResult<C, T>[] {
 		let result: FindResult<C, T>[] = [];
 
-		for (let [entity, storage] of this.#storage.entries()) {
+		for (let [entity, storage] of this.storage.entries()) {
 			if (keysPresent(storage, components)) {
 				result.push({
 					entity,
@@ -61,12 +75,12 @@ export class World<C = object> {
 	}
 
 	getComponent<T extends keyof C>(entity: Entity, component: T): C[T] | undefined {
-		let data = this.#storage.get(entity);
+		let data = this.storage.get(entity);
 		return data ? data[component] : data;
 	}
 
 	getComponents<T extends keyof C>(entity: Entity, ..._components: T[]): MultiQueryResult<C, T> | undefined {
-		return this.#storage.get(entity) as MultiQueryResult<C, T>;
+		return this.storage.get(entity) as MultiQueryResult<C, T>;
 	}
 
 	requireComponent<T extends keyof C>(entity: Entity, component: T): C[T] {
