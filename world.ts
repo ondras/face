@@ -3,15 +3,12 @@
 // "public" types used as return values of public methods
 export type Entity = number;
 
-
-type QueryResult<C, T extends keyof C> = C[T] | undefined;
-
 type MultiQueryResult<C, T extends keyof C> = {
-	[K in T]: QueryResult<C, K>;
+	[K in T]: C[K];
 };
 
 type FindResult<C, T extends keyof C> = {
-	[K in T]: C[T];
+	[K in T]: C[K];
 } & { entity: Entity };
 
 // private
@@ -63,7 +60,7 @@ export class World<C = object> {
 		return result;
 	}
 
-	getComponent<T extends keyof C>(entity: Entity, component: T): QueryResult<C, T> {
+	getComponent<T extends keyof C>(entity: Entity, component: T): C[T] | undefined {
 		let data = this.#storage.get(entity);
 		return data ? data[component] : data;
 	}
@@ -74,7 +71,7 @@ export class World<C = object> {
 
 	requireComponent<T extends keyof C>(entity: Entity, component: T): C[T] {
 		let result = this.getComponent(entity, component);
-		if (!result) { throw new Error(`entity ${entity} is missing the required component ${component}`); }
+		if (!result) { throw new Error(`entity ${entity} is missing the required component ${String(component)}`); }
 		return result;
 	}
 

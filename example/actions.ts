@@ -4,7 +4,6 @@ import display from "./display.ts";
 import * as utils from "./utils.ts";
 
 
-
 type ValueOrPromise<T> = T | Promise<T>;
 
 export abstract class Action {
