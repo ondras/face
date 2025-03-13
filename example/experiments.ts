@@ -31,7 +31,7 @@ class ET extends EventTarget {
 
 let et = new ET();
 
-let e = new MyEvent("test");
+let e = new MyEvent("a", {detail: {b: "test"}});
 et.addEventListener("a", e => {
 	console.warn("1");
 	(e as MyEvent<any>).waitUntil(new Promise(resolve => setTimeout(resolve, 500)));

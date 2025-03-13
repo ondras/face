@@ -1,6 +1,6 @@
 // deno-lint-ignore-file prefer-const
 
-import { World, Actor, FairActorScheduler, DurationActorScheduler, PubSub } from "./face.ts";
+import { World, Events, Actor, FairActorScheduler, DurationActorScheduler, PubSub } from "./face.ts";
 import { assertEquals, assert, assertThrows } from "jsr:@std/assert";
 
 
@@ -195,3 +195,86 @@ Deno.test("pubsub", async () => {
 	await pubsub.publish("a", {b:"test"});
 	assertEquals(count, 1);
 });
+
+Deno.test("builtin events", async () => {
+	let w = new World<Components>();
+	let e = w.createEntity();
+	let addCount = 0;
+	let removeCount = 0;
+
+	let addListener = function(ev: CustomEvent<Events["component-add"]>) {
+		assertEquals(ev.detail.entity, e);
+		addCount++;
+	}
+
+	let removeListener = function(ev: CustomEvent<Events["component-remove"]>) {
+		assertEquals(ev.detail.entity, e);
+		removeCount++;
+	}
+
+	w.addEventListener("component-add", addListener);
+	w.addEventListener("component-remove", removeListener);
+
+
+	w.addComponent(e, "position", {x:1, y:2});
+	assertEquals(addCount, 1);
+	assertEquals(removeCount, 0);
+
+	w.removeComponent(e, "position");
+	assertEquals(addCount, 1);
+	assertEquals(removeCount, 1);
+});
+
+Deno.test("custom events, sync", () => {
+	interface TestEvents extends Events {
+		"test": {"a":string}
+	}
+	let w = new World<Components, TestEvents>();
+	let count = 0;
+
+	let listener = function(e: CustomEvent<TestEvents["test"]>) {
+		assertEquals(e.detail.a, "b");
+		count++;
+	}
+
+	w.addEventListener("test", listener);
+	w.dispatchEvent(new CustomEvent("test", {detail:{a:"b"}}));
+	assertEquals(count, 1);
+
+	w.removeEventListener("test", listener);
+	w.dispatchEvent(new CustomEvent("test", {detail:{a:"b"}}));
+	assertEquals(count, 1);
+});
+
+Deno.test("custom events, async", async () => {
+	interface TestEvents extends Events {
+		"test": {"a":string}
+	}
+	let w = new World<Components, TestEvents>();
+	let count = 0;
+
+	let listener = function(e: WaitingEvent<{}>) {
+		let p1 = new Promise(resolve => setTimeout(resolve, 10));
+		let p2 = p1.then(() => count++);
+		e.waitUntil(p2);
+	}
+	w.addEventListener("test", listener);
+
+	let event = new WaitingEvent("test", {detail:{a:"b"}});
+	w.dispatchEvent(event);
+	assertEquals(count, 0);
+
+	await event.finish();
+	assertEquals(count, 1);
+});
+
+class WaitingEvent<T> extends CustomEvent<T> {
+	protected promises: Promise<any>[] = [];
+	waitUntil(p: Promise<any>) {
+		this.promises.push(p);
+	}
+
+	async finish() {
+		await Promise.all(this.promises);
+	}
+}
