@@ -84,3 +84,29 @@ export class Death extends Action {
 		return [];
 	}
 }
+
+
+
+let et = new EventTarget();
+class MyEvent<T> extends CustomEvent<T> {
+	protected promises: Promise<any>[] = [];
+	waitUntil(p: Promise<any>) {
+		this.promises.push(p);
+	}
+
+	async finish() {
+		await Promise.all(this.promises);
+	}
+}
+
+
+let e = new MyEvent("test");
+et.addEventListener("test", e => {
+	console.warn("1");
+	(e as MyEvent<any>).waitUntil(new Promise(resolve => setTimeout(resolve, 500)));
+	console.warn("2");
+});
+et.dispatchEvent(e);
+console.warn("3");
+await e.finish();
+console.warn("4");
