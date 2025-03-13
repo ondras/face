@@ -23,10 +23,6 @@ class ET extends EventTarget {
 	removeEventListener<T extends keyof Events>(name: T, listener: Listener<T>, options?: EventListenerOptions) {
 		return super.removeEventListener(name, listener as EventListenerOrEventListenerObject, options);
 	}
-
-	dispatchEvent<T extends keyof Events>(e: MyEvent<Events[T]>) {
-		return super.dispatchEvent(e);
-	}
 }
 
 let et = new ET();
