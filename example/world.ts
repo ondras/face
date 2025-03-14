@@ -31,11 +31,11 @@ type Actor = {
 
 
 interface Components {
-    position: Position;
-    visual: Visual;
-    actor: Actor;
-    blocks: Blocks;
-    health: Health;
+    position: Position; // anything bound to a set of coordinates
+    visual: Visual;     // anything with a visual representation
+    actor: Actor;       // anything that generates actions
+    blocks: Blocks;     // anything 
+    health: Health;     // anything with the concept of "alive" and "damage-able"
 }
 
 export type World = BaseWorld<Components>;

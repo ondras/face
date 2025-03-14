@@ -1,10 +1,11 @@
 import { Entity, FairActorScheduler, DurationActorScheduler } from "../face.ts";
 import { Action } from "./actions.ts";
 import world from "./world.ts";
-import * as display from "./display.ts";
 import pubsub from "./pubsub.ts";
+import * as display from "./display.ts";
 import * as ui from "./ui.ts";
 import * as ai from "./ai.ts";
+import { createPc, createOrc } from "./bestiary.ts";
 
 
 function procureAction(entity: Entity) {
@@ -30,51 +31,6 @@ function createWall(x: number, y: number) {
 	return entity;
 }
 
-function createPc(x: number, y: number) {
-	let visual = {ch:"@", fg:"red"};
-	let blocks = {movement:true, sight:false};
-	let position = {x, y, zIndex:2};
-
-	let entity = world.createEntity({
-		position,
-		visual,
-		blocks,
-		actor: {
-			wait:0,
-			brain: {type:"ui"}
-		},
-		health: { hp: 10 }
-	});
-
-	pubsub.publish("visual-show", {entity});
-
-	return entity;
-}
-
-function createOrc(x: number, y: number, target: Entity) {
-	let visual = {ch:"o", fg:"lime"};
-	let position = {x, y, zIndex:2};
-	let blocks = {movement:true, sight:false};
-	let task = {
-		type: "attack",
-		target
-	} as const;
-
-	let entity = world.createEntity({
-		position,
-		visual,
-		blocks,
-		actor: {
-			wait:0,
-			brain: {type:"ai", task}
-		},
-		health: { hp: 1 }
-	});
-
-	pubsub.publish("visual-show", {entity});
-
-	return entity;
-}
 
 await display.init();
 
