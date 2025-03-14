@@ -1,7 +1,7 @@
 import * as actions from "./actions.ts";
 import * as utils from "./utils.ts";
 import { Entity } from "../face.ts";
-import { World, Position } from "./world.ts";
+import world, { Position } from "./world.ts";
 
 
 const NumpadOffsets = {
@@ -31,13 +31,13 @@ function eventToAction(e: KeyboardEvent, entity: Entity, pos: Position) {
 	}
 }
 
-export async function procureAction(entity: Entity, world: World): Promise<actions.Action> {
+export async function procureAction(entity: Entity): Promise<actions.Action> {
 	let position = world.requireComponent(entity, "position");
 
 	while (true) {
 		let event = await utils.readKey();
 		let action = eventToAction(event, entity, position);
 		if (!action) { continue; }
-		if (action.canBePerformed(world)) { return action; }
+		if (action.canBePerformed()) { return action; }
 	}
 }

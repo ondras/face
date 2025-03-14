@@ -2,30 +2,32 @@ globalThis.window.DENO_ENV = 'development';
 
 
 // ../world.ts
-var World = class {
-  #storage = /* @__PURE__ */ new Map();
-  #counter = 0;
+var World = class extends EventTarget {
+  storage = /* @__PURE__ */ new Map();
+  counter = 0;
   createEntity(initialComponents = {}) {
-    let entity = ++this.#counter;
+    let entity = ++this.counter;
     if (initialComponents) {
-      this.#storage.set(entity, structuredClone(initialComponents));
+      this.storage.set(entity, structuredClone(initialComponents));
     }
     return entity;
   }
   addComponent(entity, componentName, componentData) {
-    let data = this.#storage.get(entity);
+    const { storage } = this;
+    let data = storage.get(entity);
     if (!data) {
       data = {};
-      this.#storage.set(entity, data);
+      storage.set(entity, data);
     }
     data[componentName] = componentData;
   }
-  removeComponent(entity, ...component) {
-    let data = this.#storage.get(entity);
-    component.forEach((c) => delete data[c]);
+  removeComponent(entity, ...components) {
+    const { storage } = this;
+    let data = storage.get(entity);
+    components.forEach((component) => delete data[component]);
   }
   hasComponents(entity, ...components) {
-    let data = this.#storage.get(entity);
+    let data = this.storage.get(entity);
     if (!data) {
       return false;
     }
@@ -33,7 +35,7 @@ var World = class {
   }
   findEntities(...components) {
     let result = [];
-    for (let [entity, storage] of this.#storage.entries()) {
+    for (let [entity, storage] of this.storage.entries()) {
       if (keysPresent(storage, components)) {
         result.push({
           entity,
@@ -44,11 +46,11 @@ var World = class {
     return result;
   }
   getComponent(entity, component) {
-    let data = this.#storage.get(entity);
+    let data = this.storage.get(entity);
     return data ? data[component] : data;
   }
   getComponents(entity, ..._components) {
-    return this.#storage.get(entity);
+    return this.storage.get(entity);
   }
   requireComponent(entity, component) {
     let result = this.getComponent(entity, component);
@@ -135,13 +137,13 @@ var DIRS = [
 function ring(center) {
   return DIRS.map(([dx, dy]) => [center.x + dx, center.y + dy]);
 }
-function entitiesAt(x, y, world) {
-  return world.findEntities("position").filter((result) => result.position.x == x && result.position.y == y);
+function entitiesAt(x, y) {
+  return world_default.findEntities("position").filter((result) => result.position.x == x && result.position.y == y);
 }
-function canMoveTo(x, y, world) {
-  let entities = entitiesAt(x, y, world);
+function canMoveTo(x, y) {
+  let entities = entitiesAt(x, y);
   return entities.every((e) => {
-    let blocks = world.getComponent(e.entity, "blocks");
+    let blocks = world_default.getComponent(e.entity, "blocks");
     if (blocks?.movement) {
       return false;
     }
@@ -171,7 +173,7 @@ var Action = class {
   get duration() {
     return 1;
   }
-  canBePerformed(world) {
+  canBePerformed() {
     return true;
   }
 };
@@ -180,7 +182,8 @@ var Wait = class extends Action {
     super();
     this.entity = entity;
   }
-  perform(world) {
+  perform() {
+    return [];
   }
 };
 var Move = class extends Action {
@@ -190,12 +193,12 @@ var Move = class extends Action {
     this.x = x;
     this.y = y;
   }
-  canBePerformed(world) {
-    return canMoveTo(this.x, this.y, world);
+  canBePerformed() {
+    return canMoveTo(this.x, this.y);
   }
-  async perform(world) {
+  async perform() {
     const { entity, x, y } = this;
-    let position = world.requireComponent(entity, "position");
+    let position = world_default.requireComponent(entity, "position");
     position.x = x;
     position.y = y;
     console.log("moving", entity, "to", x, y);
@@ -211,14 +214,15 @@ var Attack = class extends Action {
     this.attacker = attacker;
     this.target = target;
   }
-  async perform(world) {
+  async perform() {
     const { attacker, target } = this;
     console.log("entity", attacker, "attacking", target);
     if (Math.random() > 0.1) {
       console.log("hit");
-      return new Damage(attacker, target);
+      return [new Damage(attacker, target)];
     } else {
       console.log("miss");
+      return [];
     }
   }
 };
@@ -228,13 +232,14 @@ var Damage = class extends Action {
     this.attacker = attacker;
     this.target = target;
   }
-  perform(world) {
+  perform() {
     const { attacker, target } = this;
-    let health = world.requireComponent(target, "health");
+    let health = world_default.requireComponent(target, "health");
     health.hp -= 1;
     if (health.hp <= 0) {
-      return new Death(target);
+      return [new Death(target)];
     }
+    return [];
   }
 };
 var Death = class extends Action {
@@ -242,7 +247,8 @@ var Death = class extends Action {
     super();
     this.entity = entity;
   }
-  perform(world) {
+  perform() {
+    return [];
   }
 };
 
@@ -273,37 +279,37 @@ function eventToAction(e, entity, pos) {
     return new Move(entity, pos.x + offset[0], pos.y + offset[1]);
   }
 }
-async function procureAction(entity, world) {
-  let position = world.requireComponent(entity, "position");
+async function procureAction(entity) {
+  let position = world_default.requireComponent(entity, "position");
   while (true) {
     let event = await readKey();
-    let action2 = eventToAction(event, entity, position);
-    if (!action2) {
+    let action = eventToAction(event, entity, position);
+    if (!action) {
       continue;
     }
-    if (action2.canBePerformed(world)) {
-      return action2;
+    if (action.canBePerformed()) {
+      return action;
     }
   }
 }
 
 // ai.ts
-function wander(entity, world) {
-  let position = world.requireComponent(entity, "position");
-  let available = ring(position).filter((pos2) => canMoveTo(...pos2, world));
+function wander(entity) {
+  let position = world_default.requireComponent(entity, "position");
+  let available = ring(position).filter((pos2) => canMoveTo(...pos2));
   if (!available.length) {
     return new Wait(entity);
   }
   let pos = available.random();
   return new Move(entity, ...pos);
 }
-function canAttack(attacker, position, world) {
-  let source = world.requireComponent(attacker, "position");
+function canAttack(attacker, position) {
+  let source = world_default.requireComponent(attacker, "position");
   return dist8(source.x, source.y, position.x, position.y) == 1;
 }
-function getCloserTo(entity, position, world) {
-  let source = world.requireComponent(entity, "position");
-  let available = ring(source).filter((pos) => canMoveTo(...pos, world));
+function getCloserTo(entity, position) {
+  let source = world_default.requireComponent(entity, "position");
+  let available = ring(source).filter((pos) => canMoveTo(...pos));
   function CMP(pos1, pos2) {
     let dist1 = distOctile(...pos1, position.x, position.y);
     let dist2 = distOctile(...pos2, position.x, position.y);
@@ -314,24 +320,24 @@ function getCloserTo(entity, position, world) {
     let best = available.shift();
     return new Move(entity, ...best);
   } else {
-    return wander(entity, world);
+    return wander(entity);
   }
 }
-function procureAction2(entity, brain, world) {
+function procureAction2(entity, brain) {
   const { task } = brain;
   if (task) {
     switch (task.type) {
       case "attack":
-        let targetPosition = world.requireComponent(task.target, "position");
-        if (canAttack(entity, targetPosition, world)) {
+        let targetPosition = world_default.requireComponent(task.target, "position");
+        if (canAttack(entity, targetPosition)) {
           return new Attack(entity, task.target);
         } else {
-          return getCloserTo(entity, targetPosition, world);
+          return getCloserTo(entity, targetPosition);
         }
         break;
     }
   } else {
-    return wander(entity, world);
+    return wander(entity);
   }
 }
 
@@ -343,9 +349,9 @@ function procureAction3(entity) {
   let brain = world_default.requireComponent(entity, "actor").brain;
   switch (brain.type) {
     case "ai":
-      return procureAction2(entity, brain, world_default);
+      return procureAction2(entity, brain);
     case "ui":
-      return procureAction(entity, world_default);
+      return procureAction(entity);
   }
 }
 function createWall(x, y) {
@@ -411,15 +417,18 @@ var pc = createPc(5, 5);
 var orc = createOrc(15, 5, pc);
 var s1 = new FairActorScheduler(world_default);
 var s2 = new DurationActorScheduler(world_default);
-var action;
+var actionQueue = [];
 while (true) {
-  if (!action) {
+  if (!actionQueue.length) {
     let actor = s1.next();
     if (!actor) {
       break;
     }
-    action = await procureAction3(actor);
+    let action2 = await procureAction3(actor);
+    actionQueue.push(action2);
   }
+  let action = actionQueue.shift();
   console.log("got action", action.constructor.name);
-  action = await action.perform(world_default) || void 0;
+  let newActions = await action.perform();
+  actionQueue.unshift(...newActions);
 }

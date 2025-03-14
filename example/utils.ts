@@ -1,4 +1,4 @@
-import { World, Position } from "./world.ts";
+import world, { Position } from "./world.ts";
 
 declare global {
 	interface Array<T> {
@@ -29,13 +29,13 @@ export function ring(center: Position) {
 	return DIRS.map(([dx, dy]) => [center.x+dx, center.y+dy] as [number, number]);
 }
 
-export function entitiesAt(x: number, y: number, world: World) {
+export function entitiesAt(x: number, y: number) {
 	// fixme spatial index
 	return world.findEntities("position").filter(result => result.position.x == x && result.position.y == y);
 }
 
-export function canMoveTo(x: number, y: number, world: World) {
-	let entities = entitiesAt(x, y, world);
+export function canMoveTo(x: number, y: number) {
+	let entities = entitiesAt(x, y);
 	return entities.every(e => {
 		let blocks = world.getComponent(e.entity, "blocks");
 		if (blocks?.movement) { return false; }

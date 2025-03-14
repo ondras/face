@@ -1,7 +1,5 @@
 // deno-lint-ignore-file prefer-const
 
-import { PubSub } from "./pubsub.ts";
-
 // "public" types used as return values of public methods
 export type Entity = number;
 
@@ -13,33 +11,13 @@ type FindResult<C, T extends keyof C> = {
 	[K in T]: C[K];
 } & { entity: Entity };
 
-export interface Messages {
-	"component-add": {},
-	"component-remove": {}
-}
-
-export interface Events {
-	"component-add": {
-		entity: Entity;
-		component: string;
-	},
-	"component-remove": {
-		entity: Entity;
-		components: string[];
-	}
-}
-
-type KeyOf<T> = Extract<keyof T, string>;
-
 // private
+type KeyOf<T> = Extract<keyof T, string>;
 type Storage<C> = Partial<C>;
 
-type Listener<E extends Events, T extends KeyOf<E>> = ((e: CustomEvent<E[T]>) => void) | { handleEvent(e: CustomEvent<E[T]>): void; } | null;
-
-export class World<C = object, E extends Events = Events> extends EventTarget {
+export class World<C = object> extends EventTarget {
 	protected storage = new Map<Entity, Storage<C>>();
 	protected counter = 0;
-	protected pubsub?: PubSub<Messages>;
 
 	createEntity(initialComponents: Storage<C> = {}): Entity {
 		let entity = ++this.counter;
@@ -48,29 +26,20 @@ export class World<C = object, E extends Events = Events> extends EventTarget {
 	}
 
 	addComponent<T extends KeyOf<C>>(entity: Entity, componentName: T, componentData: C[T]) {
-		const { storage, pubsub } = this;
+		const { storage } = this;
 		let data = storage.get(entity);
 		if (!data) {
 			data = {};
 			storage.set(entity, data);
 		}
 		data[componentName] = componentData;
-		pubsub?.publish("component-add", {});
-
-		let detail = {entity, component: componentName};
-		this.dispatchEvent(new CustomEvent("component-add", {detail}));
 	}
 
 	removeComponent<T extends KeyOf<C>>(entity: Entity, ...components: T[]) {
-		const { storage, pubsub } = this;
+		const { storage } = this;
 		let data = storage.get(entity) as Storage<C>;
 		// fixme nonexistant?
-		components.forEach(component => {
-			delete data[component];
-			pubsub?.publish("component-remove", {});
-			let detail = {entity, component};
-			this.dispatchEvent(new CustomEvent("component-remove", {detail}));
-		});
+		components.forEach(component => delete data[component]);
 	}
 
 	hasComponents<T extends KeyOf<C>>(entity: Entity, ...components: T[]): boolean {
@@ -113,14 +82,6 @@ export class World<C = object, E extends Events = Events> extends EventTarget {
 		let result = this.getComponents(entity, ...components);
 		if (!result || !keysPresent(result, components)) { throw new Error(`entity ${entity} is missing the required components ${components}`); }
 		return result;
-	}
-
-	addEventListener<T extends KeyOf<E>>(name: T, listener: Listener<E, T>, options?: EventListenerOptions) {
-		return super.addEventListener(name, listener as EventListenerOrEventListenerObject, options);
-	}
-
-	removeEventListener<T extends KeyOf<E>>(name: T, listener: Listener<E, T>, options?: EventListenerOptions) {
-		return super.removeEventListener(name, listener as EventListenerOrEventListenerObject, options);
 	}
 }
 

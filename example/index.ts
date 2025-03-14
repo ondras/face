@@ -13,8 +13,8 @@ const emptyVisual = {
 function procureAction(entity: Entity) {
 	let brain = world.requireComponent(entity, "actor").brain;
 	switch (brain.type) {
-		case "ai": return ai.procureAction(entity, brain, world);
-		case "ui": return ui.procureAction(entity, world);
+		case "ai": return ai.procureAction(entity, brain);
+		case "ui": return ui.procureAction(entity);
 	}
 }
 
@@ -106,6 +106,6 @@ while (true) {
 	let action = actionQueue.shift()!;
 	console.log("got action", action.constructor.name)
 
-	let newActions = await action.perform(world);
+	let newActions = await action.perform();
 	actionQueue.unshift(...newActions);
 }

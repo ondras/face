@@ -1,5 +1,5 @@
 import { Entity } from "../face.ts";
-import { World } from "./world.ts";
+import world from "./world.ts";
 import display from "./display.ts";
 import * as utils from "./utils.ts";
 
@@ -8,8 +8,8 @@ type ValueOrPromise<T> = T | Promise<T>;
 
 export abstract class Action {
 	get duration() { return 1; }
-	canBePerformed(world: World) { return true; }
-	abstract perform(world: World): ValueOrPromise<Action[]>;
+	canBePerformed() { return true; }
+	abstract perform(): ValueOrPromise<Action[]>;
 }
 
 export class Wait extends Action {
@@ -17,7 +17,7 @@ export class Wait extends Action {
 		super();
 	}
 
-	perform(world: World) { return []; }
+	perform() { return []; }
 }
 
 export class Move extends Action {
@@ -25,11 +25,11 @@ export class Move extends Action {
 		super();
 	}
 
-	canBePerformed(world: World) {
-		return utils.canMoveTo(this.x, this.y, world);
+	canBePerformed() {
+		return utils.canMoveTo(this.x, this.y);
 	}
 
-	async perform(world: World) {
+	async perform() {
 		const { entity, x, y } = this;
 		let position = world.requireComponent(entity, "position");
 
@@ -48,7 +48,7 @@ export class Attack extends Action {
 		super();
 	}
 
-	async perform(world: World) {
+	async perform() {
 		const { attacker, target } = this;
 		console.log("entity", attacker, "attacking", target);
 		if (Math.random() > 0.1) {
@@ -66,7 +66,7 @@ export class Damage extends Action {
 		super();
 	}
 
-	perform(world: World) {
+	perform() {
 		const { attacker, target } = this;
 		let health = world.requireComponent(target, "health");
 		health.hp -= 1;
@@ -80,33 +80,7 @@ export class Death extends Action {
 		super();
 	}
 
-	perform(world: World) {
+	perform() {
 		return [];
 	}
 }
-
-
-
-let et = new EventTarget();
-class MyEvent<T> extends CustomEvent<T> {
-	protected promises: Promise<any>[] = [];
-	waitUntil(p: Promise<any>) {
-		this.promises.push(p);
-	}
-
-	async finish() {
-		await Promise.all(this.promises);
-	}
-}
-
-
-let e = new MyEvent("test");
-et.addEventListener("test", e => {
-	console.warn("1");
-	(e as MyEvent<any>).waitUntil(new Promise(resolve => setTimeout(resolve, 500)));
-	console.warn("2");
-});
-et.dispatchEvent(e);
-console.warn("3");
-await e.finish();
-console.warn("4");
