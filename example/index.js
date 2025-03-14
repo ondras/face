@@ -113,12 +113,72 @@ var DurationActorScheduler = class {
   }
 };
 
+// ../pubsub.ts
+var PubSub = class {
+  listenerStorage = /* @__PURE__ */ new Map();
+  subscribe(message, listener) {
+    this.listenersFor(message).add(listener);
+  }
+  unsubscribe(message, listener) {
+    this.listenersFor(message).delete(listener);
+  }
+  async publish(message, data) {
+    let listeners = this.listenersFor(message);
+    let promises = [...listeners].map((listener) => listener(data));
+    await Promise.all(promises);
+  }
+  listenersFor(message) {
+    const { listenerStorage } = this;
+    let listeners = listenerStorage.get(message);
+    if (!listeners) {
+      listeners = /* @__PURE__ */ new Set();
+      listenerStorage.set(message, listeners);
+    }
+    return listeners;
+  }
+};
+
 // world.ts
 var world_default = new World();
 
+// pubsub.ts
+var pubsub_default = new PubSub();
+
 // display.ts
-await customElements.whenDefined("rl-display");
-var display_default = document.querySelector("rl-display");
+var emptyVisual = {
+  ch: "."
+};
+var display = document.querySelector("rl-display");
+function onVisualShow(entity) {
+  let { position, visual } = world_default.requireComponents(entity, "position", "visual");
+  let options = {
+    id: entity,
+    zIndex: position.zIndex
+  };
+  display.draw(position.x, position.y, visual, options);
+}
+function onVisualHide(entity) {
+  display.delete(entity);
+}
+function onVisualMove(entity) {
+  let position = world_default.requireComponent(entity, "position");
+  return display.move(entity, position.x, position.y);
+}
+async function init() {
+  await customElements.whenDefined("rl-display");
+  pubsub_default.subscribe("visual-show", (data) => onVisualShow(data.entity));
+  pubsub_default.subscribe("visual-move", (data) => onVisualMove(data.entity));
+  pubsub_default.subscribe("visual-hide", (data) => onVisualHide(data.entity));
+  for (let i = 0; i < display.cols; i++) {
+    for (let j = 0; j < display.rows; j++) {
+      if (i % (display.cols - 1) && j % (display.rows - 1)) {
+        display.draw(i, j, emptyVisual);
+      }
+    }
+  }
+}
+var cols = display.cols;
+var rows = display.rows;
 
 // utils.ts
 Array.prototype.random = function() {
@@ -202,7 +262,8 @@ var Move = class extends Action {
     position.x = x;
     position.y = y;
     console.log("moving", entity, "to", x, y);
-    return display_default.move(entity, x, y);
+    await pubsub_default.publish("visual-move", { entity });
+    return [];
   }
   get duration() {
     return 10;
@@ -342,9 +403,6 @@ function procureAction2(entity, brain) {
 }
 
 // index.ts
-var emptyVisual = {
-  ch: "."
-};
 function procureAction3(entity) {
   let brain = world_default.requireComponent(entity, "actor").brain;
   switch (brain.type) {
@@ -357,20 +415,20 @@ function procureAction3(entity) {
 function createWall(x, y) {
   let visual = { ch: "#" };
   let blocks = { sight: true, movement: true };
-  let position = { x, y };
-  let id = world_default.createEntity({
+  let position = { x, y, zIndex: 0 };
+  let entity = world_default.createEntity({
     position,
     visual,
     blocks
   });
-  display_default.draw(x, y, visual, { id, zIndex: 0 });
-  return id;
+  pubsub_default.publish("visual-show", { entity });
+  return entity;
 }
 function createPc(x, y) {
   let visual = { ch: "@", fg: "red" };
   let blocks = { movement: true, sight: false };
-  let position = { x, y };
-  let id = world_default.createEntity({
+  let position = { x, y, zIndex: 2 };
+  let entity = world_default.createEntity({
     position,
     visual,
     blocks,
@@ -380,18 +438,18 @@ function createPc(x, y) {
     },
     health: { hp: 10 }
   });
-  display_default.draw(x, y, visual, { id, zIndex: 2 });
-  return id;
+  pubsub_default.publish("visual-show", { entity });
+  return entity;
 }
 function createOrc(x, y, target) {
   let visual = { ch: "o", fg: "lime" };
-  let position = { x, y };
+  let position = { x, y, zIndex: 2 };
   let blocks = { movement: true, sight: false };
   let task = {
     type: "attack",
     target
   };
-  let id = world_default.createEntity({
+  let entity = world_default.createEntity({
     position,
     visual,
     blocks,
@@ -401,13 +459,14 @@ function createOrc(x, y, target) {
     },
     health: { hp: 1 }
   });
-  display_default.draw(x, y, visual, { id, zIndex: 2 });
-  return id;
+  pubsub_default.publish("visual-show", { entity });
+  return entity;
 }
-for (let i = 0; i < display_default.cols; i++) {
-  for (let j = 0; j < display_default.rows; j++) {
-    if (i % (display_default.cols - 1) && j % (display_default.rows - 1)) {
-      display_default.draw(i, j, emptyVisual);
+await init();
+for (let i = 0; i < cols; i++) {
+  for (let j = 0; j < rows; j++) {
+    if (i % (cols - 1) && j % (rows - 1)) {
+      continue;
     } else {
       createWall(i, j);
     }

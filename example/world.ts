@@ -8,6 +8,7 @@ interface Blocks {
 export interface Position {
     x: number;
     y: number;
+    zIndex?: number;
 }
 
 interface Visual {

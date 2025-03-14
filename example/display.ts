@@ -1,6 +1,47 @@
 import RlDisplay from "https://cdn.jsdelivr.net/gh/ondras/rl-display@master/src/rl-display.ts";
 import world from "./world.ts";
+import pubsub from "./pubsub.ts";
+import { Entity } from "../face.ts";
 
-await customElements.whenDefined("rl-display");
+const emptyVisual = {
+	ch: "."
+}
 
-export default document.querySelector("rl-display") as RlDisplay;
+let display = document.querySelector("rl-display") as RlDisplay;
+
+function onVisualShow(entity: Entity) {
+	let {position, visual} = world.requireComponents(entity, "position", "visual");
+	let options = {
+		id: entity,
+		zIndex: position.zIndex
+	}
+	display.draw(position.x, position.y, visual, options);
+}
+
+function onVisualHide(entity: Entity) {
+	display.delete(entity);
+}
+
+function onVisualMove(entity: Entity) {
+	let position = world.requireComponent(entity, "position");
+	return display.move(entity, position.x, position.y);
+}
+
+export async function init() {
+	await customElements.whenDefined("rl-display");
+
+	pubsub.subscribe("visual-show", data => onVisualShow(data.entity));
+	pubsub.subscribe("visual-move", data => onVisualMove(data.entity));
+	pubsub.subscribe("visual-hide", data => onVisualHide(data.entity));
+
+	for (let i=0;i<display.cols;i++) {
+		for (let j=0;j<display.rows;j++) {
+			if (i % (display.cols-1) && j % (display.rows-1)) {
+				display.draw(i, j, emptyVisual);
+			}
+		}
+	}
+}
+
+export let cols = display.cols;
+export let rows = display.rows;

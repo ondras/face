@@ -21,10 +21,6 @@ interface Components {
 	speed: number;
 }
 
-interface Messages {
-	"a": {b:string}
-}
-
 Deno.test("component missing", () => {
 	let w = new World<Components>();
 	let e = w.createEntity();

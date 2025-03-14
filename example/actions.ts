@@ -1,6 +1,6 @@
 import { Entity } from "../face.ts";
 import world from "./world.ts";
-import display from "./display.ts";
+import pubsub from "./pubsub.ts";
 import * as utils from "./utils.ts";
 
 
@@ -37,7 +37,8 @@ export class Move extends Action {
 		position.y = y;
 		console.log("moving", entity, "to", x, y);
 
-		return display.move(entity, x, y);
+		await pubsub.publish("visual-move", {entity});
+		return [];
 	}
 
 	get duration() { return 10; }

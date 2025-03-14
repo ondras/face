@@ -1,14 +1,11 @@
 import { Entity, FairActorScheduler, DurationActorScheduler } from "../face.ts";
 import { Action } from "./actions.ts";
 import world from "./world.ts";
-import display from "./display.ts";
+import * as display from "./display.ts";
+import pubsub from "./pubsub.ts";
 import * as ui from "./ui.ts";
 import * as ai from "./ai.ts";
 
-
-const emptyVisual = {
-	ch: "."
-}
 
 function procureAction(entity: Entity) {
 	let brain = world.requireComponent(entity, "actor").brain;
@@ -21,24 +18,24 @@ function procureAction(entity: Entity) {
 function createWall(x: number, y: number) {
 	let visual = {ch:"#"};
 	let blocks = { sight: true, movement: true };
-	let position = {x, y};
-	let id = world.createEntity({
+	let position = {x, y, zIndex:0};
+	let entity = world.createEntity({
 		position,
 		visual,
 		blocks
 	});
 
-	display.draw(x, y, visual, {id, zIndex:0});
+	pubsub.publish("visual-show", {entity});
 
-	return id;
+	return entity;
 }
 
 function createPc(x: number, y: number) {
 	let visual = {ch:"@", fg:"red"};
 	let blocks = {movement:true, sight:false};
-	let position = {x, y, };
+	let position = {x, y, zIndex:2};
 
-	let id = world.createEntity({
+	let entity = world.createEntity({
 		position,
 		visual,
 		blocks,
@@ -49,21 +46,21 @@ function createPc(x: number, y: number) {
 		health: { hp: 10 }
 	});
 
-	display.draw(x, y, visual, {id, zIndex:2});
+	pubsub.publish("visual-show", {entity});
 
-	return id;
+	return entity;
 }
 
 function createOrc(x: number, y: number, target: Entity) {
 	let visual = {ch:"o", fg:"lime"};
-	let position = {x, y, };
+	let position = {x, y, zIndex:2};
 	let blocks = {movement:true, sight:false};
 	let task = {
 		type: "attack",
 		target
 	} as const;
 
-	let id = world.createEntity({
+	let entity = world.createEntity({
 		position,
 		visual,
 		blocks,
@@ -74,15 +71,17 @@ function createOrc(x: number, y: number, target: Entity) {
 		health: { hp: 1 }
 	});
 
-	display.draw(x, y, visual, {id, zIndex:2});
+	pubsub.publish("visual-show", {entity});
 
-	return id;
+	return entity;
 }
+
+await display.init();
 
 for (let i=0;i<display.cols;i++) {
 	for (let j=0;j<display.rows;j++) {
 		if (i % (display.cols-1) && j % (display.rows-1)) {
-			display.draw(i, j, emptyVisual);
+			continue;
 		} else {
 			createWall(i, j);
 		}
