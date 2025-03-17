@@ -1,4 +1,4 @@
-import { World as BaseWorld, Entity } from "../face.ts";
+import { World, Entity } from "../face.ts";
 
 interface Blocks {
 	sight: boolean;
@@ -13,6 +13,7 @@ export interface Position {
 
 interface Visual {
     ch: string;
+    fg: string;
 }
 
 interface Health {
@@ -34,10 +35,8 @@ interface Components {
     position: Position; // anything bound to a set of coordinates
     visual: Visual;     // anything with a visual representation
     actor: Actor;       // anything that generates actions
-    blocks: Blocks;     // anything 
+    blocks: Blocks;     // anything
     health: Health;     // anything with the concept of "alive" and "damage-able"
 }
 
-export type World = BaseWorld<Components>;
-
-export default new BaseWorld<Components>();
+export default new World<Components>();

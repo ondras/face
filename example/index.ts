@@ -31,8 +31,19 @@ function createWall(x: number, y: number) {
 	return entity;
 }
 
+async function logToConsole(action: Action) {
+	for await (let chunk of action.logStream) {
+		console.log(chunk);
+	}
+}
 
-await display.init();
+function processAction(action: Action) {
+	logToConsole(action);
+	return action.perform();
+}
+
+
+display.init();
 
 for (let i=0;i<display.cols;i++) {
 	for (let j=0;j<display.rows;j++) {
@@ -61,6 +72,6 @@ while (true) {
 	let action = actionQueue.shift()!;
 	console.log("got action", action.constructor.name)
 
-	let newActions = await action.perform();
+	let newActions = await processAction(action);
 	actionQueue.unshift(...newActions);
 }

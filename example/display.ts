@@ -1,13 +1,14 @@
-import RlDisplay from "https://cdn.jsdelivr.net/gh/ondras/rl-display@master/src/rl-display.ts";
+import RlDisplay from "@ondras/rl-display";
 import world from "./world.ts";
 import pubsub from "./pubsub.ts";
 import { Entity } from "../face.ts";
+
 
 const emptyVisual = {
 	ch: "."
 }
 
-let display = document.querySelector("rl-display") as RlDisplay;
+const display = new RlDisplay();
 
 function onVisualShow(entity: Entity) {
 	let {position, visual} = world.requireComponents(entity, "position", "visual");
@@ -27,9 +28,8 @@ function onVisualMove(entity: Entity) {
 	return display.move(entity, position.x, position.y);
 }
 
-export async function init() {
-	await customElements.whenDefined("rl-display");
-
+export function init() {
+	document.body.append(display);
 	pubsub.subscribe("visual-show", data => onVisualShow(data.entity));
 	pubsub.subscribe("visual-move", data => onVisualMove(data.entity));
 	pubsub.subscribe("visual-hide", data => onVisualHide(data.entity));

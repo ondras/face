@@ -6,9 +6,28 @@ import * as utils from "./utils.ts";
 
 type ValueOrPromise<T> = T | Promise<T>;
 
+function createReadableStream<T=string>() {
+	let controller!: ReadableStreamDefaultController<T>;
+	let start = (c: typeof controller) => controller = c;
+	let stream = new ReadableStream<T>({ start });
+	return { stream, controller };
+}
+
 export abstract class Action {
+	readonly logStream: ReadableStream<string>;
+	protected logController: ReadableStreamDefaultController<string>;
 	get duration() { return 1; }
-	canBePerformed() { return true; }
+
+	constructor() {
+		let { stream, controller } = createReadableStream<string>();
+		this.logStream = stream;
+		this.logController = controller;
+	}
+
+	protected log(...parts: any[]) {
+		this.logController.enqueue(parts.join(" "));
+	}
+
 	abstract perform(): ValueOrPromise<Action[]>;
 }
 
@@ -25,17 +44,13 @@ export class Move extends Action {
 		super();
 	}
 
-	canBePerformed() {
-		return utils.canMoveTo(this.x, this.y);
-	}
-
 	async perform() {
 		const { entity, x, y } = this;
 		let position = world.requireComponent(entity, "position");
 
 		position.x = x;
 		position.y = y;
-		console.log("moving", entity, "to", x, y);
+		this.log("moving", entity, "to", x, y);
 
 		await pubsub.publish("visual-move", {entity});
 		return [];
@@ -51,12 +66,12 @@ export class Attack extends Action {
 
 	async perform() {
 		const { attacker, target } = this;
-		console.log("entity", attacker, "attacking", target);
+		this.log("entity", attacker, "attacking", target);
 		if (Math.random() > 0.1) {
-			console.log("hit");
+			this.log("hit");
 			return [new Damage(attacker, target)];
 		} else {
-			console.log("miss");
+			this.log("miss");
 			return [];
 		}
 	}
@@ -82,6 +97,23 @@ export class Death extends Action {
 	}
 
 	perform() {
+		const { entity } = this;
+		this.log("death", entity);
+		world.removeComponent(entity, "actor");
+		pubsub.publish("visual-hide", {entity});
+
+		let corpse = world.createEntity({
+			position: {
+				...world.requireComponent(entity, "position"),
+				zIndex: 1
+			},
+			visual: {
+				ch: "%",
+				fg: world.requireComponent(entity, "visual").fg
+			}
+		});
+		pubsub.publish("visual-show", {entity:corpse});
+
 		return [];
 	}
 }

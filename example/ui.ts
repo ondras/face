@@ -22,12 +22,39 @@ const Aliases = {
 	"ArrowDown": "Numpad2",
 }
 
+function findAttackable(entities: {entity: Entity, position:Position}[]) {
+	// fixme detekuje mrtvoly
+	return entities.find(entity => {
+		return world.getComponent(entity.entity, "health");
+	})?.entity;
+}
+
+function findMovementBlocking(entities: {entity: Entity, position:Position}[]) {
+	// fixme detekuje mrtvoly
+	return entities.find(entity => {
+		return world.getComponent(entity.entity, "blocks")?.movement;
+	})?.entity;
+}
+
 function eventToAction(e: KeyboardEvent, entity: Entity, pos: Position) {
 	let { code } = e;
 	if (code in Aliases) { code = Aliases[code as keyof typeof Aliases]; }
 	if (code in NumpadOffsets) {
 		let offset = NumpadOffsets[code as keyof typeof NumpadOffsets];
-		return new actions.Move(entity, pos.x+offset[0], pos.y+offset[1]);
+		let x = pos.x + offset[0];
+		let y = pos.y + offset[1];
+		let entities = utils.entitiesAt(x, y);
+		let attackable = findAttackable(entities);
+		let movementBlocking = findMovementBlocking(entities);
+		if (attackable) {
+			return new actions.Attack(entity, attackable);
+		} else if (movementBlocking) {
+			console.log("bump into", movementBlocking);
+			// FIXME
+			return;
+		} else {
+			return new actions.Move(entity, pos.x+offset[0], pos.y+offset[1]);
+		}
 	}
 }
 
@@ -37,7 +64,6 @@ export async function procureAction(entity: Entity): Promise<actions.Action> {
 	while (true) {
 		let event = await utils.readKey();
 		let action = eventToAction(event, entity, position);
-		if (!action) { continue; }
-		if (action.canBePerformed()) { return action; }
+		if (action) { return action; }
 	}
 }

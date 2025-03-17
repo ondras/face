@@ -4,7 +4,7 @@
 		"allowImportingTsExtensions": true,
 		"noImplicitOverride": false,
 		"strict": true,
-		"lib": ["esnext", "dom"],
+		"lib": ["esnext", "dom", "dom.asynciterable"],
 		"target": "esnext",
 		"module": "esnext"
 	}

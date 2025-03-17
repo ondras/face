@@ -67,8 +67,8 @@ export function distEuclidean(x1: number, y1: number, x2: number, y2: number) {
 	return Math.sqrt(dx**2 + dy**2);
 }
 
-const OCTILE_CARDINAL = 2;
-const OCTILE_DIAGONAL = 3;
+export const OCTILE_CARDINAL = 2;
+export const OCTILE_DIAGONAL = 3;
 
 export function distOctile(x1: number, y1: number, x2: number, y2: number) {
 	let dx = Math.abs(x1 - x2);

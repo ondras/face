@@ -1,7 +1,0 @@
-{
-  "version": "4",
-  "remote": {
-    "https://cdn.jsdelivr.net/gh/ondras/rl-display@master/src/rl-display.ts": "53aafa7798c88008d30f9d34ee3319458226c22ecb195fe6345cb79d192fc1be",
-    "https://cdn.jsdelivr.net/gh/ondras/rl-display@master/src/storage.ts": "6f7a1cc7d54b546390382490171265b7daa1ed9bb527636d756ecc32181e5dbb"
-  }
-}
