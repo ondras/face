@@ -635,19 +635,20 @@ var Death = class extends Action {
   perform() {
     const { entity } = this;
     this.log("death", entity);
-    world_default.removeComponent(entity, "actor");
-    pubsub_default.publish("visual-hide", { entity });
+    const { position, visual } = world_default.requireComponents(entity, "position", "visual");
     let corpse = world_default.createEntity({
       position: {
-        ...world_default.requireComponent(entity, "position"),
+        ...position,
         zIndex: 1
       },
       visual: {
         ch: "%",
-        fg: world_default.requireComponent(entity, "visual").fg
+        fg: visual.fg
       }
     });
     pubsub_default.publish("visual-show", { entity: corpse });
+    world_default.removeComponent(entity, "actor", "position");
+    pubsub_default.publish("visual-hide", { entity });
     return [];
   }
 };

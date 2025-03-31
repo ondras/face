@@ -99,20 +99,22 @@ export class Death extends Action {
 	perform() {
 		const { entity } = this;
 		this.log("death", entity);
-		world.removeComponent(entity, "actor");
-		pubsub.publish("visual-hide", {entity});
 
+		const { position, visual } = world.requireComponents(entity, "position", "visual");
 		let corpse = world.createEntity({
 			position: {
-				...world.requireComponent(entity, "position"),
+				...position,
 				zIndex: 1
 			},
 			visual: {
 				ch: "%",
-				fg: world.requireComponent(entity, "visual").fg
+				fg: visual.fg
 			}
 		});
 		pubsub.publish("visual-show", {entity:corpse});
+
+		world.removeComponent(entity, "actor", "position");
+		pubsub.publish("visual-hide", {entity});
 
 		return [];
 	}
