@@ -21,7 +21,7 @@ var World = class extends EventTarget {
     }
     data[componentName] = componentData;
   }
-  removeComponent(entity, ...components) {
+  removeComponents(entity, ...components) {
     const { storage } = this;
     let data = storage.get(entity);
     components.forEach((component) => delete data[component]);
@@ -527,7 +527,6 @@ function onVisualMove(entity) {
   return display.move(entity, position.x, position.y);
 }
 function init() {
-  document.body.append(display);
   pubsub_default.subscribe("visual-show", (data) => onVisualShow(data.entity));
   pubsub_default.subscribe("visual-move", (data) => onVisualMove(data.entity));
   pubsub_default.subscribe("visual-hide", (data) => onVisualHide(data.entity));

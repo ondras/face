@@ -31,7 +31,6 @@ function onVisualMove(entity: Entity) {
 }
 
 export function init() {
-	document.body.append(display);
 	pubsub.subscribe("visual-show", data => onVisualShow(data.entity));
 	pubsub.subscribe("visual-move", data => onVisualMove(data.entity));
 	pubsub.subscribe("visual-hide", data => onVisualHide(data.entity));
