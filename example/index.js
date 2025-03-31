@@ -510,7 +510,7 @@ function updateVisual(node, visual) {
 var emptyVisual = {
   ch: "."
 };
-var display = new RlDisplay();
+var display = document.querySelector("rl-display");
 function onVisualShow(entity) {
   let { position, visual } = world_default.requireComponents(entity, "position", "visual");
   let options = {
