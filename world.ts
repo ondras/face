@@ -35,7 +35,7 @@ export class World<C = object> extends EventTarget {
 		data[componentName] = componentData;
 	}
 
-	removeComponent<T extends KeyOf<C>>(entity: Entity, ...components: T[]) {
+	removeComponents<T extends KeyOf<C>>(entity: Entity, ...components: T[]) {
 		const { storage } = this;
 		let data = storage.get(entity) as Storage<C>;
 		// fixme nonexistant?

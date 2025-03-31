@@ -1,6 +1,6 @@
 // deno-lint-ignore-file prefer-const
 
-import { World, Actor, FairActorScheduler, DurationActorScheduler } from "./face.ts";
+import { World, Actor, FairActorScheduler, DurationActorScheduler, PubSub } from "./face.ts";
 import { assertEquals, assert, assertThrows } from "jsr:@std/assert";
 
 
@@ -107,7 +107,7 @@ Deno.test("component removal", () => {
 	w.addComponent(e, "position", {x:1, y:2});
 	w.addComponent(e, "visual", {ch:"?"});
 
-	w.removeComponent(e, "position");
+	w.removeComponents(e, "position");
 	assertEquals(w.hasComponents(e, "position"), false);
 	assertEquals(w.hasComponents(e, "visual"), true);
 });
@@ -171,4 +171,47 @@ Deno.test("duration scheduler", () => {
 	assertEquals(log.match(/2/g)!.length, 8);
 	assertEquals(log.match(/1/g)!.length, 4);
 	assertEquals(log.match(/3/g)!.length, 2);
+});
+
+Deno.test("pubsub sync", () => {
+	interface Messages {
+		m: string;
+	}
+	let pubsub = new PubSub<Messages>();
+
+	let observed = "";
+
+	let listener = (data: string) => observed = data;
+	pubsub.subscribe("m", listener);
+
+	let data = "test";
+	pubsub.publish("m", data);
+	assertEquals(observed, data);
+
+	pubsub.unsubscribe("m", listener);
+
+	observed = "";
+	pubsub.publish("m", data);
+	assertEquals(observed, "");
+});
+
+Deno.test("pubsub async", async () => {
+	interface Messages {
+		m: string;
+	}
+	let pubsub = new PubSub<Messages>();
+
+	let observed = "";
+
+	let listener = async (data: string) => {
+		await new Promise(resolve => setTimeout(resolve, 10));
+		observed = data;
+	}
+	pubsub.subscribe("m", listener);
+
+	let data = "test";
+	let promise = pubsub.publish("m", data);
+	assertEquals(observed, "");
+	await promise;
+	assertEquals(observed, data);
 });
