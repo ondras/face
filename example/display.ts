@@ -1,6 +1,5 @@
 import RlDisplay from "@ondras/rl-display";
-import world from "./world.ts";
-import pubsub from "./pubsub.ts";
+import { world, pubsub } from "./world.ts";
 import { Entity } from "../face.ts";
 
 import "@ondras/rl-display"; // define
@@ -10,7 +9,7 @@ const emptyVisual = {
 	ch: "."
 }
 
-const display = document.querySelector<RlDisplay>("rl-display");
+const display = document.querySelector<RlDisplay>("rl-display")!;
 
 function onVisualShow(entity: Entity) {
 	let {position, visual} = world.requireComponents(entity, "position", "visual");

@@ -1,4 +1,5 @@
-import world, { Position } from "./world.ts";
+import { world, spatialIndex, Position } from "./world.ts";
+
 
 declare global {
 	interface Array<T> {
@@ -29,21 +30,15 @@ export function ring(center: Position) {
 	return DIRS.map(([dx, dy]) => [center.x+dx, center.y+dy] as [number, number]);
 }
 
-export function entitiesAt(x: number, y: number) {
-	// fixme spatial index
-	return world.findEntities("position").filter(result => result.position.x == x && result.position.y == y);
-}
-
 export function canMoveTo(x: number, y: number) {
-	let entities = entitiesAt(x, y);
-	return entities.every(e => {
-		let blocks = world.getComponent(e.entity, "blocks");
+	return spatialIndex.list(x, y).every(entity => {
+		let blocks = world.getComponent(entity, "blocks");
 		if (blocks?.movement) { return false; }
 		return true;
 	});
 }
 
-export async function readKey(): Promise<KeyboardEvent> {
+export function readKey(): Promise<KeyboardEvent> {
 	let { promise, resolve } = Promise.withResolvers<KeyboardEvent>();
 	window.addEventListener("keydown", resolve, {once:true});
 	return promise;

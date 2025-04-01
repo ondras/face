@@ -73,8 +73,8 @@ function keysPresent(data, keys) {
 
 // ../scheduler.ts
 var FairActorScheduler = class {
-  constructor(world) {
-    this.world = world;
+  constructor(world2) {
+    this.world = world2;
   }
   next() {
     let results = this.world.findEntities("actor");
@@ -92,8 +92,8 @@ var FairActorScheduler = class {
   }
 };
 var DurationActorScheduler = class {
-  constructor(world) {
-    this.world = world;
+  constructor(world2) {
+    this.world = world2;
   }
   next() {
     let results = this.world.findEntities("actor");
@@ -138,11 +138,48 @@ var PubSub = class {
   }
 };
 
-// world.ts
-var world_default = new World();
+// ../spatial-index.ts
+var SpatialIndex = class {
+  world;
+  data = [];
+  constructor(world2) {
+    this.world = world2;
+  }
+  update(entity) {
+    const { world: world2, data } = this;
+    data.forEach((col) => {
+      col.forEach((entities) => {
+        let index = entities.indexOf(entity);
+        if (index > -1) {
+          entities.splice(index, 1);
+        }
+      });
+    });
+    let position = world2.getComponent(entity, "position");
+    if (position) {
+      let storage = getStorageFor(position.x, position.y, data);
+      storage.push(entity);
+    }
+  }
+  list(x, y) {
+    return getStorageFor(x, y, this.data);
+  }
+};
+function getStorageFor(x, y, data) {
+  while (data.length <= x) {
+    data.push([]);
+  }
+  let col = data[x];
+  while (col.length <= y) {
+    col.push([]);
+  }
+  return col[y];
+}
 
-// pubsub.ts
-var pubsub_default = new PubSub();
+// world.ts
+var world = new World();
+var pubsub = new PubSub();
+var spatialIndex = new SpatialIndex(world);
 
 // https://jsr.io/@ondras/rl-display/1.0.0/src/storage.ts
 var Storage = class {
@@ -512,7 +549,7 @@ var emptyVisual = {
 };
 var display = document.querySelector("rl-display");
 function onVisualShow(entity) {
-  let { position, visual } = world_default.requireComponents(entity, "position", "visual");
+  let { position, visual } = world.requireComponents(entity, "position", "visual");
   let options = {
     id: entity,
     zIndex: position.zIndex
@@ -523,13 +560,13 @@ function onVisualHide(entity) {
   display.delete(entity);
 }
 function onVisualMove(entity) {
-  let position = world_default.requireComponent(entity, "position");
+  let position = world.requireComponent(entity, "position");
   return display.move(entity, position.x, position.y);
 }
 function init() {
-  pubsub_default.subscribe("visual-show", (data) => onVisualShow(data.entity));
-  pubsub_default.subscribe("visual-move", (data) => onVisualMove(data.entity));
-  pubsub_default.subscribe("visual-hide", (data) => onVisualHide(data.entity));
+  pubsub.subscribe("visual-show", (data) => onVisualShow(data.entity));
+  pubsub.subscribe("visual-move", (data) => onVisualMove(data.entity));
+  pubsub.subscribe("visual-hide", (data) => onVisualHide(data.entity));
   for (let i = 0; i < display.cols; i++) {
     for (let j = 0; j < display.rows; j++) {
       if (i % (display.cols - 1) && j % (display.rows - 1)) {
@@ -581,11 +618,12 @@ var Move = class extends Action {
   }
   async perform() {
     const { entity, x, y } = this;
-    let position = world_default.requireComponent(entity, "position");
+    let position = world.requireComponent(entity, "position");
     position.x = x;
     position.y = y;
     this.log("moving", entity, "to", x, y);
-    await pubsub_default.publish("visual-move", { entity });
+    spatialIndex.update(entity);
+    await pubsub.publish("visual-move", { entity });
     return [];
   }
   get duration() {
@@ -618,7 +656,7 @@ var Damage = class extends Action {
   }
   perform() {
     const { attacker, target } = this;
-    let health = world_default.requireComponent(target, "health");
+    let health = world.requireComponent(target, "health");
     health.hp -= 1;
     if (health.hp <= 0) {
       return [new Death(target)];
@@ -634,8 +672,8 @@ var Death = class extends Action {
   perform() {
     const { entity } = this;
     this.log("death", entity);
-    const { position, visual } = world_default.requireComponents(entity, "position", "visual");
-    let corpse = world_default.createEntity({
+    const { position, visual } = world.requireComponents(entity, "position", "visual");
+    let corpse = world.createEntity({
       position: {
         ...position,
         zIndex: 1
@@ -645,9 +683,11 @@ var Death = class extends Action {
         fg: visual.fg
       }
     });
-    pubsub_default.publish("visual-show", { entity: corpse });
-    world_default.removeComponent(entity, "actor", "position");
-    pubsub_default.publish("visual-hide", { entity });
+    spatialIndex.update(corpse);
+    pubsub.publish("visual-show", { entity: corpse });
+    world.removeComponents(entity, "actor", "position");
+    spatialIndex.update(entity);
+    pubsub.publish("visual-hide", { entity });
     return [];
   }
 };
@@ -669,20 +709,16 @@ var DIRS = [
 function ring(center) {
   return DIRS.map(([dx, dy]) => [center.x + dx, center.y + dy]);
 }
-function entitiesAt(x, y) {
-  return world_default.findEntities("position").filter((result) => result.position.x == x && result.position.y == y);
-}
 function canMoveTo(x, y) {
-  let entities = entitiesAt(x, y);
-  return entities.every((e) => {
-    let blocks = world_default.getComponent(e.entity, "blocks");
+  return spatialIndex.list(x, y).every((entity) => {
+    let blocks = world.getComponent(entity, "blocks");
     if (blocks?.movement) {
       return false;
     }
     return true;
   });
 }
-async function readKey() {
+function readKey() {
   let { promise, resolve } = Promise.withResolvers();
   window.addEventListener("keydown", resolve, { once: true });
   return promise;
@@ -719,13 +755,13 @@ var Aliases = {
 };
 function findAttackable(entities) {
   return entities.find((entity) => {
-    return world_default.getComponent(entity.entity, "health");
-  })?.entity;
+    return world.getComponent(entity, "health");
+  });
 }
 function findMovementBlocking(entities) {
   return entities.find((entity) => {
-    return world_default.getComponent(entity.entity, "blocks")?.movement;
-  })?.entity;
+    return world.getComponent(entity, "blocks")?.movement;
+  });
 }
 function eventToAction(e, entity, pos) {
   let { code } = e;
@@ -736,7 +772,7 @@ function eventToAction(e, entity, pos) {
     let offset = NumpadOffsets[code];
     let x = pos.x + offset[0];
     let y = pos.y + offset[1];
-    let entities = entitiesAt(x, y);
+    let entities = spatialIndex.list(x, y);
     let attackable = findAttackable(entities);
     let movementBlocking = findMovementBlocking(entities);
     if (attackable) {
@@ -750,7 +786,7 @@ function eventToAction(e, entity, pos) {
   }
 }
 async function procureAction(entity) {
-  let position = world_default.requireComponent(entity, "position");
+  let position = world.requireComponent(entity, "position");
   while (true) {
     let event = await readKey();
     let action = eventToAction(event, entity, position);
@@ -762,7 +798,7 @@ async function procureAction(entity) {
 
 // ai.ts
 function wander(entity) {
-  let position = world_default.requireComponent(entity, "position");
+  let position = world.requireComponent(entity, "position");
   let available = ring(position).filter((pos2) => canMoveTo(...pos2));
   if (!available.length) {
     return new Wait(entity);
@@ -771,11 +807,11 @@ function wander(entity) {
   return new Move(entity, ...pos);
 }
 function canAttack(attacker, position) {
-  let source = world_default.requireComponent(attacker, "position");
+  let source = world.requireComponent(attacker, "position");
   return dist8(source.x, source.y, position.x, position.y) == 1;
 }
 function getCloserTo(entity, position) {
-  let source = world_default.requireComponent(entity, "position");
+  let source = world.requireComponent(entity, "position");
   let available = ring(source).filter((pos) => canMoveTo(...pos));
   function CMP(pos1, pos2) {
     let dist1 = distOctile(...pos1, position.x, position.y);
@@ -795,7 +831,7 @@ function procureAction2(entity, brain) {
   if (task) {
     switch (task.type) {
       case "attack":
-        let targetPosition = world_default.requireComponent(task.target, "position");
+        let targetPosition = world.requireComponent(task.target, "position");
         if (canAttack(entity, targetPosition)) {
           return new Attack(entity, task.target);
         } else {
@@ -813,7 +849,7 @@ function createPc(x, y) {
   let visual = { ch: "@", fg: "red" };
   let blocks = { movement: true, sight: false };
   let position = { x, y, zIndex: 2 };
-  let entity = world_default.createEntity({
+  let entity = world.createEntity({
     position,
     visual,
     blocks,
@@ -823,7 +859,8 @@ function createPc(x, y) {
     },
     health: { hp: 10 }
   });
-  pubsub_default.publish("visual-show", { entity });
+  spatialIndex.update(entity);
+  pubsub.publish("visual-show", { entity });
   return entity;
 }
 function createOrc(x, y, target) {
@@ -834,7 +871,7 @@ function createOrc(x, y, target) {
     type: "attack",
     target
   };
-  let entity = world_default.createEntity({
+  let entity = world.createEntity({
     position,
     visual,
     blocks,
@@ -844,13 +881,14 @@ function createOrc(x, y, target) {
     },
     health: { hp: 1 }
   });
-  pubsub_default.publish("visual-show", { entity });
+  spatialIndex.update(entity);
+  pubsub.publish("visual-show", { entity });
   return entity;
 }
 
 // index.ts
 function procureAction3(entity) {
-  let brain = world_default.requireComponent(entity, "actor").brain;
+  let brain = world.requireComponent(entity, "actor").brain;
   switch (brain.type) {
     case "ai":
       return procureAction2(entity, brain);
@@ -862,12 +900,13 @@ function createWall(x, y) {
   let visual = { ch: "#" };
   let blocks = { sight: true, movement: true };
   let position = { x, y, zIndex: 0 };
-  let entity = world_default.createEntity({
+  let entity = world.createEntity({
     position,
     visual,
     blocks
   });
-  pubsub_default.publish("visual-show", { entity });
+  spatialIndex.update(entity);
+  pubsub.publish("visual-show", { entity });
   return entity;
 }
 async function logToConsole(action) {
@@ -891,8 +930,8 @@ for (let i = 0; i < cols; i++) {
 }
 var pc = createPc(5, 5);
 var orc = createOrc(15, 5, pc);
-var s1 = new FairActorScheduler(world_default);
-var s2 = new DurationActorScheduler(world_default);
+var s1 = new FairActorScheduler(world);
+var s2 = new DurationActorScheduler(world);
 var actionQueue = [];
 while (true) {
   if (!actionQueue.length) {

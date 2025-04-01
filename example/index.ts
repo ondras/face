@@ -1,7 +1,6 @@
 import { Entity, FairActorScheduler, DurationActorScheduler } from "../face.ts";
 import { Action } from "./actions.ts";
-import world from "./world.ts";
-import pubsub from "./pubsub.ts";
+import { world, pubsub, spatialIndex } from "./world.ts";
 import * as display from "./display.ts";
 import * as ui from "./ui.ts";
 import * as ai from "./ai.ts";
@@ -26,6 +25,7 @@ function createWall(x: number, y: number) {
 		blocks
 	});
 
+	spatialIndex.update(entity);
 	pubsub.publish("visual-show", {entity});
 
 	return entity;

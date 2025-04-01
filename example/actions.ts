@@ -1,7 +1,5 @@
 import { Entity } from "../face.ts";
-import world from "./world.ts";
-import pubsub from "./pubsub.ts";
-import * as utils from "./utils.ts";
+import { world, pubsub, spatialIndex } from "./world.ts";
 
 
 type ValueOrPromise<T> = T | Promise<T>;
@@ -51,6 +49,8 @@ export class Move extends Action {
 		position.x = x;
 		position.y = y;
 		this.log("moving", entity, "to", x, y);
+
+		spatialIndex.update(entity);
 
 		await pubsub.publish("visual-move", {entity});
 		return [];
@@ -111,9 +111,11 @@ export class Death extends Action {
 				fg: visual.fg
 			}
 		});
+		spatialIndex.update(corpse);
 		pubsub.publish("visual-show", {entity:corpse});
 
-		world.removeComponent(entity, "actor", "position");
+		world.removeComponents(entity, "actor", "position");
+		spatialIndex.update(entity);
 		pubsub.publish("visual-hide", {entity});
 
 		return [];

@@ -1,7 +1,7 @@
 import * as actions from "./actions.ts";
 import * as utils from "./utils.ts";
 import { Entity } from "../face.ts";
-import world, { Position } from "./world.ts";
+import { world, spatialIndex, Position } from "./world.ts";
 
 
 const NumpadOffsets = {
@@ -22,18 +22,18 @@ const Aliases = {
 	"ArrowDown": "Numpad2",
 }
 
-function findAttackable(entities: {entity: Entity, position:Position}[]) {
+function findAttackable(entities: Entity[]) {
 	// fixme detekuje mrtvoly
 	return entities.find(entity => {
-		return world.getComponent(entity.entity, "health");
-	})?.entity;
+		return world.getComponent(entity, "health");
+	});
 }
 
-function findMovementBlocking(entities: {entity: Entity, position:Position}[]) {
+function findMovementBlocking(entities: Entity[]) {
 	// fixme detekuje mrtvoly
 	return entities.find(entity => {
-		return world.getComponent(entity.entity, "blocks")?.movement;
-	})?.entity;
+		return world.getComponent(entity, "blocks")?.movement;
+	});
 }
 
 function eventToAction(e: KeyboardEvent, entity: Entity, pos: Position) {
@@ -43,7 +43,7 @@ function eventToAction(e: KeyboardEvent, entity: Entity, pos: Position) {
 		let offset = NumpadOffsets[code as keyof typeof NumpadOffsets];
 		let x = pos.x + offset[0];
 		let y = pos.y + offset[1];
-		let entities = utils.entitiesAt(x, y);
+		let entities = spatialIndex.list(x, y);
 		let attackable = findAttackable(entities);
 		let movementBlocking = findMovementBlocking(entities);
 		if (attackable) {

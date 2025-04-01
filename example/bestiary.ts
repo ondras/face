@@ -1,7 +1,5 @@
 import { Entity } from "../face.ts";
-import pubsub from "./pubsub.ts";
-import world from "./world.ts";
-
+import { world, pubsub, spatialIndex } from "./world.ts";
 
 
 export function createPc(x: number, y: number) {
@@ -20,6 +18,7 @@ export function createPc(x: number, y: number) {
 		health: { hp: 10 }
 	});
 
+	spatialIndex.update(entity);
 	pubsub.publish("visual-show", {entity});
 
 	return entity;
@@ -45,6 +44,7 @@ export function createOrc(x: number, y: number, target: Entity) {
 		health: { hp: 1 }
 	});
 
+	spatialIndex.update(entity);
 	pubsub.publish("visual-show", {entity});
 
 	return entity;

@@ -1,5 +1,5 @@
 import { Entity } from "../face.ts";
-import world, { AIBrain, Position } from "./world.ts";
+import { world, AIBrain, Position } from "./world.ts";
 import * as actions from "./actions.ts";
 import * as utils from "./utils.ts";
 

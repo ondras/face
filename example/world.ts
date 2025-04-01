@@ -1,4 +1,5 @@
-import { World, Entity } from "../face.ts";
+import { World, Entity, SpatialIndex, PubSub } from "../face.ts";
+
 
 interface Blocks {
 	sight: boolean;
@@ -39,4 +40,21 @@ interface Components {
     health: Health;     // anything with the concept of "alive" and "damage-able"
 }
 
-export default new World<Components>();
+export const world = new World<Components>();
+
+
+interface Messages {
+	"visual-show": {
+		entity: Entity;
+	};
+	"visual-hide": {
+		entity: Entity;
+	};
+	"visual-move": {
+		entity: Entity;
+	}
+}
+export const pubsub = new PubSub<Messages>();
+
+
+export const spatialIndex = new SpatialIndex(world);
