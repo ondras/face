@@ -599,6 +599,9 @@ var Action = class {
   log(...parts) {
     this.logController.enqueue(parts.join(" "));
   }
+  end() {
+    this.logController.close();
+  }
 };
 var Wait = class extends Action {
   constructor(entity) {
@@ -914,9 +917,17 @@ async function logToConsole(action) {
     console.log(chunk);
   }
 }
-function processAction(action) {
-  logToConsole(action);
-  return action.perform();
+async function processAction(action) {
+  async function performAction(action2) {
+    let actions2 = await action2.perform();
+    action2.end();
+    return actions2;
+  }
+  let [_, actions] = await Promise.all([
+    logToConsole(action),
+    performAction(action)
+  ]);
+  return actions;
 }
 init();
 for (let i = 0; i < cols; i++) {

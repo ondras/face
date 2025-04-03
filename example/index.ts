@@ -37,9 +37,18 @@ async function logToConsole(action: Action) {
 	}
 }
 
-function processAction(action: Action) {
-	logToConsole(action);
-	return action.perform();
+async function processAction(action: Action) {
+	async function performAction(action: Action) {
+		let actions = await action.perform();
+		action.end();
+		return actions;
+	}
+
+	let [_, actions] = await Promise.all([
+		logToConsole(action),
+		performAction(action)
+	]);
+	return actions;
 }
 
 

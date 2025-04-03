@@ -26,6 +26,10 @@ export abstract class Action {
 		this.logController.enqueue(parts.join(" "));
 	}
 
+	end() {
+		this.logController.close();
+	}
+
 	abstract perform(): ValueOrPromise<Action[]>;
 }
 
@@ -53,6 +57,7 @@ export class Move extends Action {
 		spatialIndex.update(entity);
 
 		await pubsub.publish("visual-move", {entity});
+
 		return [];
 	}
 
