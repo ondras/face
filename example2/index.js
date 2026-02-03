@@ -168,52 +168,17 @@ var display = document.querySelector("rl-display");
 Array.prototype.random = function() {
   return this[Math.floor(Math.random() * this.length)];
 };
-var NumpadOffsets = {
-  "Numpad1": [
-    -1,
-    1
-  ],
-  "Numpad2": [
-    0,
-    1
-  ],
-  "Numpad3": [
-    1,
-    1
-  ],
-  "Numpad4": [
-    -1,
-    0
-  ],
-  "Numpad6": [
-    1,
-    0
-  ],
-  "Numpad7": [
-    -1,
-    -1
-  ],
-  "Numpad8": [
-    0,
-    -1
-  ],
-  "Numpad9": [
-    1,
-    -1
-  ]
-};
-var ArrowAliases = {
-  "ArrowLeft": "Numpad4",
-  "ArrowRight": "Numpad6",
-  "ArrowUp": "Numpad8",
-  "ArrowDown": "Numpad2"
-};
 function readKey() {
   let { promise, resolve } = Promise.withResolvers();
   window.addEventListener("keydown", resolve, {
     once: true
   });
   return promise;
+}
+function distEuclidean(x1, y1, x2, y2) {
+  let dx = x1 - x2;
+  let dy = y1 - y2;
+  return Math.sqrt(dx ** 2 + dy ** 2);
 }
 
 // pc.ts
@@ -250,32 +215,24 @@ function createEntity(x, y) {
   });
   return entity;
 }
-function redraw(entity) {
-  let position = world.requireComponent(entity, "position");
-  display.move(entity, position.x, position.y);
-}
-function eventToAction(e, entity) {
-  let { code } = e;
-  if (code in ArrowAliases) {
-    code = ArrowAliases[code];
-  }
-  if (code in NumpadOffsets) {
-    let offset = NumpadOffsets[code];
-    let position = world.requireComponent(entity, "position");
-    position.x += offset[0];
-    position.y += offset[1];
-    redraw(entity);
-    return true;
-  }
-  return false;
+async function shoot(entity) {
+  let tx = Math.floor(Math.random() * display.cols);
+  let ty = Math.floor(Math.random() * display.rows);
+  let source = world.requireComponent(entity, "position");
+  let projectile = display.draw(source.x, source.y, {
+    ch: "*",
+    fg: "yellow"
+  }, {
+    zIndex: 3
+  });
+  let dist = distEuclidean(source.x, source.y, tx, ty);
+  await display.move(projectile, tx, ty, dist * 20);
 }
 async function act(entity) {
   while (true) {
     let event = await readKey();
-    let ok = eventToAction(event, entity);
-    if (ok) {
-      return;
-    }
+    await shoot(entity);
+    return;
   }
 }
 
