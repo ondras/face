@@ -13,78 +13,83 @@ type FindResult<C, T extends keyof C> = {
 
 // private
 type KeyOf<T> = Extract<keyof T, string>;
-type Storage<C> = Partial<C>;
 
-export class World<C = object> extends EventTarget {
-	protected storage = new Map<Entity, Storage<C>>();
+export class World<AllComponents = object> extends EventTarget {
+	protected storage = new Map<Entity, Partial<AllComponents>>();
 	protected counter = 0;
 
-	createEntity(initialComponents: Storage<C> = {}): Entity {
+	createEntity(initialComponents: Partial<AllComponents> = {}): Entity {
 		let entity = ++this.counter;
-		if (initialComponents) { this.storage.set(entity, structuredClone(initialComponents)); }
+		initialComponents && this.addComponents(entity, initialComponents);
 		return entity;
 	}
 
-	addComponent<T extends KeyOf<C>>(entity: Entity, componentName: T, componentData: C[T]) {
+	addComponent<C extends KeyOf<AllComponents>>(entity: Entity, componentName: C, componentData: AllComponents[C]) {
 		const { storage } = this;
 		let data = storage.get(entity);
 		if (!data) {
 			data = {};
 			storage.set(entity, data);
 		}
-		data[componentName] = componentData;
+		data[componentName] = structuredClone(componentData);
 	}
 
-	removeComponents<T extends KeyOf<C>>(entity: Entity, ...components: T[]) {
+	addComponents(entity: Entity, components: Partial<AllComponents>) {
+		for (let name in components) {
+			this.addComponent(entity, name, components[name]!);
+		}
+	}
+
+	removeComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]) {
 		const { storage } = this;
-		let data = storage.get(entity) as Storage<C>;
+		let data = storage.get(entity)!;
 		// fixme nonexistant?
 		components.forEach(component => delete data[component]);
 	}
 
-	hasComponents<T extends KeyOf<C>>(entity: Entity, ...components: T[]): boolean {
+	hasComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): boolean {
 		let data = this.storage.get(entity);
 		if (!data) { return false; }
 		return keysPresent(data, components);
 	}
 
-	findEntities<T extends KeyOf<C>>(...components: T[]): FindResult<C, T>[] {
-		let result: FindResult<C, T>[] = [];
+	findEntities<C extends KeyOf<AllComponents>>(...components: C[]): FindResult<AllComponents, C>[] {
+		let result: FindResult<AllComponents, C>[] = [];
 
 		for (let [entity, storage] of this.storage.entries()) {
 			if (keysPresent(storage, components)) {
 				result.push({
 					entity,
 					...storage
-				} as FindResult<C, T>);
+				} as FindResult<AllComponents, C>);
 			}
 		}
 
 		return result;
 	}
 
-	getComponent<T extends KeyOf<C>>(entity: Entity, component: T): C[T] | undefined {
+	getComponent<C extends KeyOf<AllComponents>>(entity: Entity, component: C): AllComponents[C] | undefined {
 		let data = this.storage.get(entity);
 		return data ? data[component] : data;
 	}
 
-	getComponents<T extends KeyOf<C>>(entity: Entity, ..._components: T[]): MultiQueryResult<C, T> | undefined {
-		return this.storage.get(entity) as MultiQueryResult<C, T>;
+	getComponents<C extends KeyOf<AllComponents>>(entity: Entity, ..._components: C[]): MultiQueryResult<AllComponents, C> | undefined {
+		return this.storage.get(entity) as MultiQueryResult<AllComponents, C>;
 	}
 
-	requireComponent<T extends KeyOf<C>>(entity: Entity, component: T): C[T] {
+	requireComponent<C extends KeyOf<AllComponents>>(entity: Entity, component: C): AllComponents[C] {
 		let result = this.getComponent(entity, component);
 		if (!result) { throw new Error(`entity ${entity} is missing the required component ${component}`); }
 		return result;
 	}
 
-	requireComponents<T extends KeyOf<C>>(entity: Entity, ...components: T[]): MultiQueryResult<C, T> {
+	requireComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): MultiQueryResult<AllComponents, C> {
 		let result = this.getComponents(entity, ...components);
 		if (!result || !keysPresent(result, components)) { throw new Error(`entity ${entity} is missing the required components ${components}`); }
 		return result;
 	}
 }
 
-function keysPresent(data: Record<string, any>, keys: string[]) {
+function keysPresent(data: Record<string, unknown>, keys: string[]) {
 	return keys.every(key => key in data);
 }

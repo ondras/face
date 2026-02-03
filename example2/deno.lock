@@ -1,0 +1,16 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@ondras/rl-display@2": "2.0.0"
+  },
+  "jsr": {
+    "@ondras/rl-display@2.0.0": {
+      "integrity": "c2ad264e9c818e8455ecb4fcf3eeaa8d5fc8fc4fb40af39e0866e2a9423fe860"
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@ondras/rl-display@2"
+    ]
+  }
+}

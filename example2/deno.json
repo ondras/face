@@ -1,0 +1,13 @@
+{
+  "imports": {
+	"@ondras/rl-display": "jsr:@ondras/rl-display@^2.0.0"
+  },
+  "compilerOptions": {
+    "lib": ["esnext", "dom", "dom.asynciterable"]
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["prefer-const"]
+    }
+  }
+}

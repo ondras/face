@@ -124,6 +124,15 @@ Deno.test("nonexistant entity", () => {
 	assertEquals(w.hasComponents(e, "position"), true);
 });
 
+Deno.test("mutable component", () => {
+	let w = new World<Components>();
+	let e = w.createEntity();
+	let position = {x:1, y:2};
+	w.addComponent(e, "position", position);
+	position.x = 3;
+	assertEquals(w.requireComponent(e, "position").x, 1);
+});
+
 Deno.test("fair scheduler", () => {
 	let w = new World<Components>();
 	let s = new FairActorScheduler(w);
