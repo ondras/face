@@ -19,8 +19,19 @@ export class World<AllComponents = object> extends EventTarget {
 	/** world.createEntity({position:{x,y}}) */
 	createEntity(init?: Partial<AllComponents>): Entity {
 		let entity = ++this.counter;
+
+		let detail = { entity };
+		this.dispatchEvent(new CustomEvent("entity-create", { detail }));
+
 		init && this.addComponents(entity, init);
 		return entity;
+	}
+
+	removeEntity(entity: Entity) {
+		let detail = { entity };
+		this.dispatchEvent(new CustomEvent("entity-remove", { detail }));
+
+		this.storage.delete(entity);
 	}
 
 	/** world.addComponent(3, "position", {x,y}) */
@@ -32,6 +43,12 @@ export class World<AllComponents = object> extends EventTarget {
 			storage.set(entity, data);
 		}
 		data[componentName] = structuredClone(componentData);
+
+		let detail = {
+			entity,
+			component: componentName
+		}
+		this.dispatchEvent(new CustomEvent("component-add", { detail }));
 	}
 
 	/** world.addComponent(3, {position:{x,y}, name:{...}}) */
@@ -46,7 +63,14 @@ export class World<AllComponents = object> extends EventTarget {
 		const { storage } = this;
 		let data = storage.get(entity)!;
 		// fixme nonexistant?
-		components.forEach(component => delete data[component]);
+		components.forEach(component => {
+			delete data[component];
+			let detail = {
+				entity,
+				component
+			}
+			this.dispatchEvent(new CustomEvent("component-remove", { detail }));
+		});
 	}
 
 	/** world.hasComponents(3, "position", "name", ...) */
@@ -60,12 +84,11 @@ export class World<AllComponents = object> extends EventTarget {
 		let result: FindResult<AllComponents, C>[] = [];
 
 		for (let [entity, storage] of this.storage.entries()) {
-			if (keysPresent(storage, components)) {
-				result.push({
-					entity,
-					...storage
-				} as FindResult<AllComponents, C>);
-			}
+			if (!keysPresent(storage, components)) { continue; }
+			result.push({
+				entity,
+				...storage
+			} as FindResult<AllComponents, C>);
 		}
 
 		return result;

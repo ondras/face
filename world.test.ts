@@ -1,24 +1,21 @@
 // deno-lint-ignore-file prefer-const
 
-import { World, Actor, FairActorScheduler, DurationActorScheduler, PubSub, SpatialIndex } from "./face.ts";
 import { assertEquals, assert, assertThrows } from "jsr:@std/assert";
+import { World } from "./face.ts";
 
 
-export interface Position {
+interface Position {
     x: number;
     y: number;
 }
 
-export interface Visual {
+interface Visual {
     ch: string;
 }
 
 interface Components {
     position: Position;
     visual: Visual;
-	actor: Actor;
-	name: string;
-	speed: number;
 }
 
 Deno.test("component missing", () => {
@@ -150,126 +147,12 @@ Deno.test("mutable component", () => {
 	assertEquals(w.requireComponent(e, "position").x, 1);
 });
 
-Deno.test("fair scheduler", () => {
+Deno.test("remove entity", () => {
 	let w = new World<Components>();
-	let s = new FairActorScheduler(w);
+	let e = w.createEntity();
+	let position = {x:1, y:2};
+	w.addComponent(e, "position", position);
 
-	assert(!s.next());
-
-	w.createEntity({actor:{wait: 0}, name:"1"});
-	w.createEntity({actor:{wait: 0}, name:"2"});
-	let log = "";
-
-	for (let i=0;i<10;i++) {
-		let entity = s.next();
-		assert(entity);
-		log += w.getComponent(entity!, "name");
-	}
-
-	assertEquals(log, "1212121212");
-});
-
-Deno.test("duration scheduler", () => {
-	let w = new World<Components>();
-	let s = new DurationActorScheduler(w);
-
-	assert(!s.next());
-
-	w.createEntity({actor:{wait: 0}, name:"1", speed:100});
-	w.createEntity({actor:{wait: 0}, name:"2", speed:200});
-	w.createEntity({actor:{wait: 0}, name:"3", speed:50});
-	let log = "";
-
-	for (let i=0;i<14;i++) {
-		let entity = s.next();
-		assert(entity);
-
-		let speed = w.getComponent(entity!, "speed")!;
-		s.commit(entity!, 1/speed);
-
-		log += w.getComponent(entity!, "name");
-	}
-
-	assert(log.includes("1"));
-	assert(log.includes("2"));
-	assert(log.includes("3"));
-
-	assertEquals(log.match(/2/g)!.length, 8);
-	assertEquals(log.match(/1/g)!.length, 4);
-	assertEquals(log.match(/3/g)!.length, 2);
-});
-
-Deno.test("pubsub sync", () => {
-	interface Messages {
-		m: string;
-	}
-	let pubsub = new PubSub<Messages>();
-
-	let observed = "";
-
-	let listener = (data: string) => observed = data;
-	pubsub.subscribe("m", listener);
-
-	let data = "test";
-	pubsub.publish("m", data);
-	assertEquals(observed, data);
-
-	pubsub.unsubscribe("m", listener);
-
-	observed = "";
-	pubsub.publish("m", data);
-	assertEquals(observed, "");
-});
-
-Deno.test("pubsub async", async () => {
-	interface Messages {
-		m: string;
-	}
-	let pubsub = new PubSub<Messages>();
-
-	let observed = "";
-
-	let listener = async (data: string) => {
-		await new Promise(resolve => setTimeout(resolve, 10));
-		observed = data;
-	}
-	pubsub.subscribe("m", listener);
-
-	let data = "test";
-	let promise = pubsub.publish("m", data);
-	assertEquals(observed, "");
-	await promise;
-	assertEquals(observed, data);
-});
-
-Deno.test("spatial index", () => {
-	let w = new World<Components>();
-	let si = new SpatialIndex(w);
-
-	let e1 = w.createEntity({position: {x:5, y:5}});
-	let e2 = w.createEntity({position: {x:5, y:5}});
-
-	assertEquals(si.list(0, 0).length, 0);
-	assertEquals(si.list(5, 5).length, 0);
-
-	si.update(e1);
-	assertEquals(si.list(5, 5).length, 1);
-	assertEquals(si.list(5, 5)[0], e1);
-
-	si.update(e2);
-	assertEquals(si.list(5, 5).length, 2);
-	assert(si.list(5, 5).includes(e1));
-	assert(si.list(5, 5).includes(e2));
-
-	w.requireComponent(e1, "position").x = 6;
-	si.update(e1);
-
-	assertEquals(si.list(5, 5).length, 1);
-	assertEquals(si.list(5, 5)[0], e2);
-	assertEquals(si.list(6, 5).length, 1);
-	assertEquals(si.list(6, 5)[0], e1);
-
-	w.removeComponents(e2, "position");
-	si.update(e2);
-	assertEquals(si.list(5, 5).length, 0);
+	w.removeEntity(e);
+	assertEquals(w.hasComponents(e, "position"), false);
 });
