@@ -1,5 +1,9 @@
 // deno-lint-ignore-file prefer-const
 
+import Query from "./query.ts";
+import TypedEventTarget from "./typed-event-target.ts";
+
+
 // "public" types used as return values of public methods
 export type Entity = number;
 
@@ -10,9 +14,16 @@ type ComponentBag<AllComponents, C extends keyof AllComponents> = {
 type FindResult<AllComponents, C extends keyof AllComponents> = { entity: Entity } & ComponentBag<AllComponents, C>;
 
 // private
-type KeyOf<T> = Extract<keyof T, string>;
+type KeyOf<T> = keyof T & string;
 
-export class World<AllComponents = object> extends EventTarget {
+interface Events<AllComponents> {
+	"entity-create": CustomEvent<{ entity: Entity }>;
+	"entity-remove": CustomEvent<{ entity: Entity }>;
+	"component-add": CustomEvent<{ entity: Entity; component: keyof AllComponents; }>;
+	"component-remove": CustomEvent<{ entity: Entity; component: keyof AllComponents; }>;
+}
+
+export class World<AllComponents = object> extends TypedEventTarget<Events<AllComponents>> {
 	protected storage = new Map<Entity, Partial<AllComponents>>();
 	protected counter = 0;
 
@@ -120,11 +131,22 @@ export class World<AllComponents = object> extends EventTarget {
 		if (!result) { throw new Error(`entity ${entity} is missing the required components ${components}`); }
 		return result;
 	}
+/* */
+	query(...components: KeyOf<AllComponents>[]) {
+		return new Query(this, ...components);
+	}
+	/*	*/
 }
 
 function keysPresent(data: Record<string, unknown>, keys: string[]) {
 	return keys.every(key => key in data);
 }
+
+let w1 = new World<{a:number, b:number}>();
+let w2 = new World<{a:number}>();
+
+w2 = w1;
+
 /*
 
 let w = new World<{a:{x:number}}>();
