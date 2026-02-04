@@ -3,11 +3,11 @@
 // "public" types used as return values of public methods
 export type Entity = number;
 
-type MultiQueryResult<AllComponents, C extends keyof AllComponents> = {
+type ComponentBag<AllComponents, C extends keyof AllComponents> = {
 	[K in C]: AllComponents[K];
 };
 
-type FindResult<AllComponents, C extends keyof AllComponents> = { entity: Entity } & MultiQueryResult<AllComponents, C>;
+type FindResult<AllComponents, C extends keyof AllComponents> = { entity: Entity } & ComponentBag<AllComponents, C>;
 
 // private
 type KeyOf<T> = Extract<keyof T, string>;
@@ -74,12 +74,14 @@ export class World<AllComponents = object> extends EventTarget {
 	/** world.getComponent(3, "position") -> {x,y} | undefined */
 	getComponent<C extends KeyOf<AllComponents>>(entity: Entity, component: C): AllComponents[C] | undefined {
 		let data = this.storage.get(entity);
-		return data ? data[component] : data;
+		return data ? data[component] : undefined;
 	}
 
-	/** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} */
-	getComponents<C extends KeyOf<AllComponents>>(entity: Entity, ..._components: C[]): MultiQueryResult<AllComponents, C> | undefined {
-		return this.storage.get(entity) as MultiQueryResult<AllComponents, C>;
+	/** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | undefined */
+	getComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): ComponentBag<AllComponents, C> | undefined {
+		let data = this.storage.get(entity);
+		if (!data || !keysPresent(data, components)) { return undefined; }
+		return data as ComponentBag<AllComponents, C>;
 	}
 
 	/** world.requireComponent(3, "position") -> {x,y} | throw */
@@ -90,9 +92,9 @@ export class World<AllComponents = object> extends EventTarget {
 	}
 
 	/** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | throw */
-	requireComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): MultiQueryResult<AllComponents, C> {
+	requireComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): ComponentBag<AllComponents, C> {
 		let result = this.getComponents(entity, ...components);
-		if (!result || !keysPresent(result, components)) { throw new Error(`entity ${entity} is missing the required components ${components}`); }
+		if (!result) { throw new Error(`entity ${entity} is missing the required components ${components}`); }
 		return result;
 	}
 }

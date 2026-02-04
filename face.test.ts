@@ -74,6 +74,7 @@ Deno.test("subset of components", () => {
 	assertEquals(w.hasComponents(e, "position", "visual"), false);
 
 	let result = w.getComponents(e, "position", "visual");
+	assertEquals(result, undefined);
 });
 
 Deno.test("component search", () => {
