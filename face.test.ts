@@ -60,6 +60,22 @@ Deno.test("multiple components present", () => {
 	assertEquals(result.visual, vis);
 });
 
+Deno.test("subset of components", () => {
+	let w = new World<Components>();
+	let e = w.createEntity();
+	let pos = {x:1, y:2};
+	let vis = {ch:"?"};
+
+	w.addComponent(e, "position", pos);
+	w.addComponent(e, "visual", vis);
+	assertEquals(w.hasComponents(e, "position", "visual"), true);
+
+	w.removeComponents(e, "visual");
+	assertEquals(w.hasComponents(e, "position", "visual"), false);
+
+	let result = w.getComponents(e, "position", "visual");
+});
+
 Deno.test("component search", () => {
 	let w = new World<Components>();
 	let e1 = w.createEntity();

@@ -3,13 +3,11 @@
 // "public" types used as return values of public methods
 export type Entity = number;
 
-type MultiQueryResult<C, T extends keyof C> = {
-	[K in T]: C[K];
+type MultiQueryResult<AllComponents, C extends keyof AllComponents> = {
+	[K in C]: AllComponents[K];
 };
 
-type FindResult<C, T extends keyof C> = {
-	[K in T]: C[K];
-} & { entity: Entity };
+type FindResult<AllComponents, C extends keyof AllComponents> = { entity: Entity } & MultiQueryResult<AllComponents, C>;
 
 // private
 type KeyOf<T> = Extract<keyof T, string>;
@@ -18,12 +16,14 @@ export class World<AllComponents = object> extends EventTarget {
 	protected storage = new Map<Entity, Partial<AllComponents>>();
 	protected counter = 0;
 
-	createEntity(initialComponents: Partial<AllComponents> = {}): Entity {
+	/** world.createEntity({position:{x,y}}) */
+	createEntity(init?: Partial<AllComponents>): Entity {
 		let entity = ++this.counter;
-		initialComponents && this.addComponents(entity, initialComponents);
+		init && this.addComponents(entity, init);
 		return entity;
 	}
 
+	/** world.addComponent(3, "position", {x,y}) */
 	addComponent<C extends KeyOf<AllComponents>>(entity: Entity, componentName: C, componentData: AllComponents[C]) {
 		const { storage } = this;
 		let data = storage.get(entity);
@@ -34,12 +34,14 @@ export class World<AllComponents = object> extends EventTarget {
 		data[componentName] = structuredClone(componentData);
 	}
 
+	/** world.addComponent(3, {position:{x,y}, name:{...}}) */
 	addComponents(entity: Entity, components: Partial<AllComponents>) {
 		for (let name in components) {
 			this.addComponent(entity, name, components[name]!);
 		}
 	}
 
+	/** world.removeComponents(3, "position", "name", ...) */
 	removeComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]) {
 		const { storage } = this;
 		let data = storage.get(entity)!;
@@ -47,6 +49,7 @@ export class World<AllComponents = object> extends EventTarget {
 		components.forEach(component => delete data[component]);
 	}
 
+	/** world.hasComponents(3, "position", "name", ...) */
 	hasComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): boolean {
 		let data = this.storage.get(entity);
 		if (!data) { return false; }
@@ -68,21 +71,25 @@ export class World<AllComponents = object> extends EventTarget {
 		return result;
 	}
 
+	/** world.getComponent(3, "position") -> {x,y} | undefined */
 	getComponent<C extends KeyOf<AllComponents>>(entity: Entity, component: C): AllComponents[C] | undefined {
 		let data = this.storage.get(entity);
 		return data ? data[component] : data;
 	}
 
+	/** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} */
 	getComponents<C extends KeyOf<AllComponents>>(entity: Entity, ..._components: C[]): MultiQueryResult<AllComponents, C> | undefined {
 		return this.storage.get(entity) as MultiQueryResult<AllComponents, C>;
 	}
 
+	/** world.requireComponent(3, "position") -> {x,y} | throw */
 	requireComponent<C extends KeyOf<AllComponents>>(entity: Entity, component: C): AllComponents[C] {
 		let result = this.getComponent(entity, component);
 		if (!result) { throw new Error(`entity ${entity} is missing the required component ${component}`); }
 		return result;
 	}
 
+	/** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | throw */
 	requireComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): MultiQueryResult<AllComponents, C> {
 		let result = this.getComponents(entity, ...components);
 		if (!result || !keysPresent(result, components)) { throw new Error(`entity ${entity} is missing the required components ${components}`); }
@@ -93,3 +100,12 @@ export class World<AllComponents = object> extends EventTarget {
 function keysPresent(data: Record<string, unknown>, keys: string[]) {
 	return keys.every(key => key in data);
 }
+/*
+
+let w = new World<{a:{x:number}}>();
+let c = w.getComponents(1, "a");
+if (c) {
+	c.a.x = 4;
+}
+
+*/
