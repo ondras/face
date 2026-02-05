@@ -22,16 +22,16 @@ const Aliases = {
 	"ArrowDown": "Numpad2",
 }
 
-function findAttackable(entities: Entity[]) {
+function findAttackable(entities: Set<Entity>) {
 	// fixme detekuje mrtvoly
-	return entities.find(entity => {
+	return [...entities].find(entity => {
 		return world.getComponent(entity, "health");
 	});
 }
 
-function findMovementBlocking(entities: Entity[]) {
+function findMovementBlocking(entities: Set<Entity>) {
 	// fixme detekuje mrtvoly
-	return entities.find(entity => {
+	return [...entities].find(entity => {
 		return world.getComponent(entity, "blocks")?.movement;
 	});
 }

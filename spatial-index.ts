@@ -10,37 +10,38 @@ interface HasPosition {
 
 export class SpatialIndex {
 	protected world: World<HasPosition>;
-	protected data: Entity[][][] = [];
+	protected data: Set<Entity>[][] = [];
+	protected entityToSet = new Map<Entity, Set<Entity>>();
 
 	constructor(world: World) {
 		this.world = world;
 	}
 
 	update(entity: Entity) {
-		const { world, data } = this;
+		const { world, data, entityToSet } = this;
 
-		data.forEach(col => {
-			col.forEach(entities => {
-				let index = entities.indexOf(entity);
-				if (index > -1) { entities.splice(index, 1); }
-			});
-		});
+		const existingSet = entityToSet.get(entity);
+		if (existingSet) {
+			existingSet.delete(entity);
+			entityToSet.delete(entity);
+		}
 
-		let position = world.getComponent(entity, "position");
+		const position = world.getComponent(entity, "position");
 		if (position) { // add/update
-			let storage = getStorageFor(position.x, position.y, data);
-			storage.push(entity);
+			const storage = getSetFor(position.x, position.y, data);
+			storage.add(entity);
+			entityToSet.set(entity, storage);
 		}
 	}
 
-	list(x: number, y: number): Entity[] {
-		return getStorageFor(x, y, this.data);
+	list(x: number, y: number): Set<Entity> {
+		return getSetFor(x, y, this.data);
 	}
 }
 
-function getStorageFor(x: number, y: number, data: Entity[][][]) {
+function getSetFor(x: number, y: number, data: Set<Entity>[][]): Set<Entity> {
 	while (data.length <= x) { data.push([]); }
-	let col = data[x];
-	while (col.length <= y) { col.push([]); }
+	const col = data[x];
+	while (col.length <= y) { col.push(new Set<Entity>()); }
 	return col[y];
 }

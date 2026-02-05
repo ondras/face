@@ -1,17 +1,86 @@
 globalThis.window.DENO_ENV = 'development';
 
 
+// ../query.ts
+var Query = class extends EventTarget {
+  ac = new AbortController();
+  entities = /* @__PURE__ */ new Set();
+  components;
+  constructor(world2, ...components) {
+    super();
+    this.components = components;
+    const options = { signal: this.ac.signal };
+    world2.addEventListener("component-add", (e) => this.onAddComponent(e.detail.entity, e.detail.component), options);
+    world2.addEventListener("component-remove", (e) => this.onRemoveComponent(e.detail.entity, e.detail.component), options);
+    world2.addEventListener("entity-remove", (e) => this.onRemoveEntity(e.detail.entity), options);
+    world2.findEntities(...components).forEach((result) => this.entities.add(result.entity));
+  }
+  destroy() {
+    this.entities.clear();
+    this.ac.abort();
+  }
+  onAddComponent(entity, component) {
+    const { entities, components } = this;
+    if (!components.includes(component)) {
+      return;
+    }
+    entities.add(entity);
+    this.dispatchEvent(new Event("change"));
+  }
+  onRemoveComponent(entity, component) {
+    const { entities, components } = this;
+    if (!components.includes(component)) {
+      return;
+    }
+    entities.delete(entity);
+    this.dispatchEvent(new Event("change"));
+  }
+  onRemoveEntity(entity) {
+    const { entities } = this;
+    if (!entities.has(entity)) {
+      return;
+    }
+    entities.delete(entity);
+    this.dispatchEvent(new Event("change"));
+  }
+};
+
+// ../typed-event-target.ts
+var TypedEventTarget = class extends EventTarget {
+  addEventListener(type, listener, options) {
+    return super.addEventListener(type, listener, options);
+  }
+  removeEventListener(type, listener, options) {
+    return super.removeEventListener(type, listener, options);
+  }
+  /*
+  	type TypedCustomEvent<T, K extends keyof T> = CustomEvent<T[K]> & { readonly type: K };
+  
+  	//dispatchEvent<K extends keyof EventMap>(event: TypedCustomEvent<EventMap, K>): boolean {
+  	dispatchEvent<E extends keyof EventMap>(event: CustomEvent<EventMap[E]>): boolean {
+  		return super.dispatchEvent(event);
+  	}
+  */
+};
+
 // ../world.ts
-var World = class extends EventTarget {
+var World = class extends TypedEventTarget {
   storage = /* @__PURE__ */ new Map();
   counter = 0;
-  createEntity(initialComponents = {}) {
+  /** world.createEntity({position:{x,y}}) */
+  createEntity(init2) {
     let entity = ++this.counter;
-    if (initialComponents) {
-      this.storage.set(entity, structuredClone(initialComponents));
-    }
+    let detail = { entity };
+    this.dispatchEvent(new CustomEvent("entity-create", { detail }));
+    init2 && this.addComponents(entity, init2);
     return entity;
   }
+  removeEntity(entity) {
+    let detail = { entity };
+    this.dispatchEvent(new CustomEvent("entity-remove", { detail }));
+    this.storage.delete(entity);
+  }
+  /** world.addComponent(3, "position", {x,y}) */
   addComponent(entity, componentName, componentData) {
     const { storage } = this;
     let data = storage.get(entity);
@@ -19,13 +88,33 @@ var World = class extends EventTarget {
       data = {};
       storage.set(entity, data);
     }
-    data[componentName] = componentData;
+    data[componentName] = structuredClone(componentData);
+    let detail = {
+      entity,
+      component: componentName
+    };
+    this.dispatchEvent(new CustomEvent("component-add", { detail }));
   }
+  /** world.addComponent(3, {position:{x,y}, name:{...}}) */
+  addComponents(entity, components) {
+    for (let name in components) {
+      this.addComponent(entity, name, components[name]);
+    }
+  }
+  /** world.removeComponents(3, "position", "name", ...) */
   removeComponents(entity, ...components) {
     const { storage } = this;
     let data = storage.get(entity);
-    components.forEach((component) => delete data[component]);
+    components.forEach((component) => {
+      delete data[component];
+      let detail = {
+        entity,
+        component
+      };
+      this.dispatchEvent(new CustomEvent("component-remove", { detail }));
+    });
   }
+  /** world.hasComponents(3, "position", "name", ...) */
   hasComponents(entity, ...components) {
     let data = this.storage.get(entity);
     if (!data) {
@@ -36,22 +125,30 @@ var World = class extends EventTarget {
   findEntities(...components) {
     let result = [];
     for (let [entity, storage] of this.storage.entries()) {
-      if (keysPresent(storage, components)) {
-        result.push({
-          entity,
-          ...storage
-        });
+      if (!keysPresent(storage, components)) {
+        continue;
       }
+      result.push({
+        entity,
+        ...storage
+      });
     }
     return result;
   }
+  /** world.getComponent(3, "position") -> {x,y} | undefined */
   getComponent(entity, component) {
     let data = this.storage.get(entity);
-    return data ? data[component] : data;
+    return data ? data[component] : void 0;
   }
-  getComponents(entity, ..._components) {
-    return this.storage.get(entity);
+  /** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | undefined */
+  getComponents(entity, ...components) {
+    let data = this.storage.get(entity);
+    if (!data || !keysPresent(data, components)) {
+      return void 0;
+    }
+    return data;
   }
+  /** world.requireComponent(3, "position") -> {x,y} | throw */
   requireComponent(entity, component) {
     let result = this.getComponent(entity, component);
     if (!result) {
@@ -59,13 +156,19 @@ var World = class extends EventTarget {
     }
     return result;
   }
+  /** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | throw */
   requireComponents(entity, ...components) {
     let result = this.getComponents(entity, ...components);
-    if (!result || !keysPresent(result, components)) {
+    if (!result) {
       throw new Error(`entity ${entity} is missing the required components ${components}`);
     }
     return result;
   }
+  /* */
+  query(...components) {
+    return new Query(this, ...components);
+  }
+  /*	*/
 };
 function keysPresent(data, keys) {
   return keys.every((key) => key in data);
@@ -142,36 +245,35 @@ var PubSub = class {
 var SpatialIndex = class {
   world;
   data = [];
+  entityToSet = /* @__PURE__ */ new Map();
   constructor(world2) {
     this.world = world2;
   }
   update(entity) {
-    const { world: world2, data } = this;
-    data.forEach((col) => {
-      col.forEach((entities) => {
-        let index = entities.indexOf(entity);
-        if (index > -1) {
-          entities.splice(index, 1);
-        }
-      });
-    });
-    let position = world2.getComponent(entity, "position");
+    const { world: world2, data, entityToSet } = this;
+    const existingSet = entityToSet.get(entity);
+    if (existingSet) {
+      existingSet.delete(entity);
+      entityToSet.delete(entity);
+    }
+    const position = world2.getComponent(entity, "position");
     if (position) {
-      let storage = getStorageFor(position.x, position.y, data);
-      storage.push(entity);
+      const storage = getSetFor(position.x, position.y, data);
+      storage.add(entity);
+      entityToSet.set(entity, storage);
     }
   }
   list(x, y) {
-    return getStorageFor(x, y, this.data);
+    return getSetFor(x, y, this.data);
   }
 };
-function getStorageFor(x, y, data) {
+function getSetFor(x, y, data) {
   while (data.length <= x) {
     data.push([]);
   }
-  let col = data[x];
+  const col = data[x];
   while (col.length <= y) {
-    col.push([]);
+    col.push(/* @__PURE__ */ new Set());
   }
   return col[y];
 }
@@ -757,12 +859,12 @@ var Aliases = {
   "ArrowDown": "Numpad2"
 };
 function findAttackable(entities) {
-  return entities.find((entity) => {
+  return [...entities].find((entity) => {
     return world.getComponent(entity, "health");
   });
 }
 function findMovementBlocking(entities) {
-  return entities.find((entity) => {
+  return [...entities].find((entity) => {
     return world.getComponent(entity, "blocks")?.movement;
   });
 }
