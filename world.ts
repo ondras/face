@@ -11,15 +11,15 @@ type ComponentBag<AllComponents, C extends keyof AllComponents> = {
 	[K in C]: AllComponents[K];
 };
 
-// private
-type ComponentName<T> = keyof T & string;
-
-interface Events<AllComponents> {
+export interface Events<AllComponents> {
 	"entity-create": CustomEvent<{ entity: Entity }>;
 	"entity-remove": CustomEvent<{ entity: Entity }>;
 	"component-add": CustomEvent<{ entity: Entity; component: ComponentName<AllComponents>; }>;
 	"component-remove": CustomEvent<{ entity: Entity; component: ComponentName<AllComponents>; }>;
 }
+
+// private
+type ComponentName<T> = keyof T & string;
 
 export class World<AllComponents = object> extends TypedEventTarget<Events<AllComponents>> {
 	protected storage = new Map<Entity, Partial<AllComponents>>();
@@ -89,6 +89,7 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 		return keysPresent(data, components);
 	}
 
+	/** world.findEntities("position") -> Map<3, {position:{x,y}}> */
 	findEntities<C extends ComponentName<AllComponents>>(...components: C[]): Map<Entity, ComponentBag<AllComponents, C>> {
 		let result = new Map();
 
