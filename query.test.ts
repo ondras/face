@@ -67,3 +67,32 @@ Deno.test("query irrelevant entities", () => {
 	w.removeEntity(e1);
 	assertEquals(q.entities.size, 0);
 });
+
+Deno.test("query events", () => {
+	let w = new World<Components>();
+
+	let q = w.query("name");
+	let eventCount = 0;
+
+	q.addEventListener("change", _ => eventCount++);
+
+	let e1 = w.createEntity({name:"a"});
+	assertEquals(eventCount, 1);
+	eventCount = 0;
+
+	let e2 = w.createEntity({speed:3});
+	assertEquals(eventCount, 0);
+	eventCount = 0;
+
+	w.removeComponents(e1, "name");
+	assertEquals(eventCount, 1);
+	eventCount = 0;
+
+	w.addComponent(e2, "name", "b");
+	assertEquals(eventCount, 1);
+	eventCount = 0;
+
+	w.removeEntity(e2);
+	assertEquals(eventCount, 1);
+	eventCount = 0;
+});
