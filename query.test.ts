@@ -9,7 +9,7 @@ interface Components {
 	speed: number;
 }
 
-Deno.test("query", () => {
+Deno.test("query relevant entities", () => {
 	let w = new World<Components>();
 
 	let e1 = w.createEntity({name:"e1"});
@@ -50,5 +50,20 @@ Deno.test("query", () => {
 	assertEquals(q.entities.has(e3), false);
 
 	q.destroy();
+	assertEquals(q.entities.size, 0);
+});
+
+Deno.test("query irrelevant entities", () => {
+	let w = new World<Components>();
+
+	let q = w.query("name");
+
+	let e1 = w.createEntity({speed:5});
+	assertEquals(q.entities.size, 0);
+
+	w.removeComponents(e1, "speed");
+	assertEquals(q.entities.size, 0);
+
+	w.removeEntity(e1);
 	assertEquals(q.entities.size, 0);
 });

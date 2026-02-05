@@ -156,3 +156,50 @@ Deno.test("remove entity", () => {
 	w.removeEntity(e);
 	assertEquals(w.hasComponents(e, "position"), false);
 });
+
+Deno.test("events", () => {
+	let w = new World<Components>();
+
+	let events: CustomEvent[] = [];
+	function listener(e: CustomEvent) { events.push(e);}
+
+	w.addEventListener("entity-create", listener);
+	w.addEventListener("entity-remove", listener);
+	w.addEventListener("component-add", listener);
+	w.addEventListener("component-remove", listener);
+
+	let e1 = w.createEntity();
+	assertEquals(events.length, 1);
+	assertEquals(events[0].type, "entity-create");
+	assertEquals(events[0].detail.entity, e1);
+	events = [];
+
+	let e2 = w.createEntity({position:{x:1,y:2}});
+	assertEquals(events.length, 2);
+	assertEquals(events[0].type, "entity-create");
+	assertEquals(events[0].detail.entity, e2);
+	assertEquals(events[1].type, "component-add");
+	assertEquals(events[1].detail.entity, e2);
+	assertEquals(events[1].detail.component, "position");
+	events = [];
+
+	w.addComponent(e1, "visual", {ch:"?"});
+	assertEquals(events.length, 1);
+	assertEquals(events[0].type, "component-add");
+	assertEquals(events[0].detail.entity, e1);
+	assertEquals(events[0].detail.component, "visual");
+	events = [];
+
+	w.removeComponents(e2, "position");
+	assertEquals(events.length, 1);
+	assertEquals(events[0].type, "component-remove");
+	assertEquals(events[0].detail.entity, e2);
+	assertEquals(events[0].detail.component, "position");
+	events = [];
+
+	w.removeEntity(e1);
+	assertEquals(events.length, 1);
+	assertEquals(events[0].type, "entity-remove");
+	assertEquals(events[0].detail.entity, e1);
+	events = [];
+});
