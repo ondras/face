@@ -19,8 +19,8 @@ type ComponentName<T> = keyof T & string;
 interface Events<AllComponents> {
 	"entity-create": CustomEvent<{ entity: Entity }>;
 	"entity-remove": CustomEvent<{ entity: Entity }>;
-	"component-add": CustomEvent<{ entity: Entity; component: keyof AllComponents; }>;
-	"component-remove": CustomEvent<{ entity: Entity; component: keyof AllComponents; }>;
+	"component-add": CustomEvent<{ entity: Entity; component: ComponentName<AllComponents>; }>;
+	"component-remove": CustomEvent<{ entity: Entity; component: ComponentName<AllComponents>; }>;
 }
 
 export class World<AllComponents = object> extends TypedEventTarget<Events<AllComponents>> {

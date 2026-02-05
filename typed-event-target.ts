@@ -1,12 +1,8 @@
-type EventRecord<T> = {
-    [key in keyof T]: Event;
-};
-
 type ListenerFunction<EventMap, E extends keyof EventMap> = (event: EventMap[E]) => void;
 type ListenerObject<EventMap, E extends keyof EventMap> = { handleEvent(event: EventMap[E]): void }
 type Listener<EventMap, E extends keyof EventMap> = ListenerFunction<EventMap, E> | ListenerObject<EventMap, E> | null;
 
-export default class TypedEventTarget<EventMap extends EventRecord<EventMap>> extends EventTarget {
+export default class TypedEventTarget<EventMap extends Record<keyof EventMap, Event>> extends EventTarget {
 	addEventListener<E extends (keyof EventMap & string)>(type: E, listener: Listener<EventMap, E>, options?: AddEventListenerOptions | boolean	) {
 		return super.addEventListener(type, listener as EventListener, options);
 	}
