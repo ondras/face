@@ -87,21 +87,21 @@ Deno.test("component search", () => {
 	w.addComponent(e3, "visual", {ch:"?"});
 
 	let positionResults = w.findEntities("position");
-	let positionEntities = positionResults.map(result => result.entity);
-	let visualEntities = w.findEntities("visual").map(result => result.entity);
+	let visualResults = w.findEntities("visual");
 
-	assert(positionEntities.includes(e1));
-	assert(!positionEntities.includes(e2));
-	assert(positionEntities.includes(e3));
+	assert(positionResults.has(e1));
+	assert(!positionResults.has(e2));
+	assert(positionResults.has(e3));
 
-	assert(!visualEntities.includes(e1));
-	assert(visualEntities.includes(e2));
-	assert(visualEntities.includes(e3));
+	assert(!visualResults.has(e1));
+	assert(visualResults.has(e2));
+	assert(visualResults.has(e3));
 
-	positionResults.forEach(result => {
-		assert(result.entity);
-		assert(result.position);
-		assert(result.position.x);
+	positionResults.forEach((components, entity) => {
+		assert(entity);
+		assert(components);
+		assert(components.position);
+		assert(components.position.x);
 	})
 });
 

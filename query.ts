@@ -18,7 +18,7 @@ export default class Query<AllComponents, C extends ComponentName<AllComponents>
 		world.addEventListener("component-remove", e => this.onRemoveComponent(e.detail.entity, e.detail.component as C), options);
 		world.addEventListener("entity-remove", e => this.onRemoveEntity(e.detail.entity), options);
 
-		world.findEntities(...components).forEach(result => this.entities.add(result.entity));
+		world.findEntities(...components).keys().forEach(entity => this.entities.add(entity));
 	}
 
 	destroy() {

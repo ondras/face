@@ -7,26 +7,6 @@ export interface Actor {
 	wait: number;
 }
 
-export class FairActorScheduler {
-	constructor(protected world: World<{actor: Actor}>) {}
-
-	next(): Entity | undefined {
-		let results = this.world.findEntities("actor");
-		if (!results.length) { return undefined; }
-
-		// first non-waiting
-		let result = results.find(({actor}) => actor.wait == 0);
-
-		if (result) {
-			result.actor.wait = 1;
-			return result.entity;
-		} else {
-			results.forEach(({actor}) => actor.wait = 0);
-			return this.next(); // ...and return first
-		}
-	}
-}
-
 export class DurationActorScheduler {
 	constructor(protected world: World<{actor: Actor}>) {}
 
@@ -34,21 +14,32 @@ export class DurationActorScheduler {
 		let results = this.world.findEntities("actor");
 
 		let minWait = 1/0;
-		let minResult: typeof results[0] | undefined;
+		let minEntity: Entity | undefined;
 
-		results.forEach(result => {
-			if (result.actor.wait < minWait) {
-				minWait = result.actor.wait;
-				minResult = result;
+		results.forEach((components, entity) => {
+			if (components.actor.wait < minWait) {
+				minWait = components.actor.wait;
+				minEntity = entity;
 			}
 		});
+		results.forEach(r => r.actor.wait -= minWait);
 
-		results.forEach(({actor}) => actor.wait -= minWait);
-
-		return minResult?.entity;
+		return minEntity;
 	}
 
 	commit(entity: Entity, duration: number) {
 		this.world.requireComponent(entity, "actor").wait += duration;
+	}
+}
+
+export class FairActorScheduler extends DurationActorScheduler {
+	next() {
+		let result = super.next();
+		if (!result) { return undefined; }
+
+		// auto-commit: picked entity gets a constant wait (moves to the end of the line)
+		this.commit(result, 1);
+
+		return result;
 	}
 }

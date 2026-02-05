@@ -11,8 +11,6 @@ type ComponentBag<AllComponents, C extends keyof AllComponents> = {
 	[K in C]: AllComponents[K];
 };
 
-type FindResult<AllComponents, C extends keyof AllComponents> = { entity: Entity } & ComponentBag<AllComponents, C>;
-
 // private
 type ComponentName<T> = keyof T & string;
 
@@ -91,15 +89,12 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 		return keysPresent(data, components);
 	}
 
-	findEntities<C extends ComponentName<AllComponents>>(...components: C[]): FindResult<AllComponents, C>[] {
-		let result: FindResult<AllComponents, C>[] = [];
+	findEntities<C extends ComponentName<AllComponents>>(...components: C[]): Map<Entity, ComponentBag<AllComponents, C>> {
+		let result = new Map();
 
 		for (let [entity, storage] of this.storage.entries()) {
 			if (!keysPresent(storage, components)) { continue; }
-			result.push({
-				entity,
-				...storage
-			} as FindResult<AllComponents, C>);
+			result.set(entity, storage);
 		}
 
 		return result;
@@ -131,11 +126,10 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 		if (!result) { throw new Error(`entity ${entity} is missing the required components ${components}`); }
 		return result;
 	}
-/* */
+
 	query<C extends ComponentName<AllComponents>>(...components: C[]) {
 		return new Query(this, ...components);
 	}
-	/*	*/
 }
 
 function keysPresent(data: Record<string, unknown>, keys: string[]) {
