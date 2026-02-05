@@ -14,7 +14,7 @@ type ComponentBag<AllComponents, C extends keyof AllComponents> = {
 type FindResult<AllComponents, C extends keyof AllComponents> = { entity: Entity } & ComponentBag<AllComponents, C>;
 
 // private
-type KeyOf<T> = keyof T & string;
+type ComponentName<T> = keyof T & string;
 
 interface Events<AllComponents> {
 	"entity-create": CustomEvent<{ entity: Entity }>;
@@ -46,7 +46,7 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 	}
 
 	/** world.addComponent(3, "position", {x,y}) */
-	addComponent<C extends KeyOf<AllComponents>>(entity: Entity, componentName: C, componentData: AllComponents[C]) {
+	addComponent<C extends ComponentName<AllComponents>>(entity: Entity, componentName: C, componentData: AllComponents[C]) {
 		const { storage } = this;
 		let data = storage.get(entity);
 		if (!data) {
@@ -70,7 +70,7 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 	}
 
 	/** world.removeComponents(3, "position", "name", ...) */
-	removeComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]) {
+	removeComponents<C extends ComponentName<AllComponents>>(entity: Entity, ...components: C[]) {
 		const { storage } = this;
 		let data = storage.get(entity)!;
 		// fixme nonexistant?
@@ -85,13 +85,13 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 	}
 
 	/** world.hasComponents(3, "position", "name", ...) */
-	hasComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): boolean {
+	hasComponents<C extends ComponentName<AllComponents>>(entity: Entity, ...components: C[]): boolean {
 		let data = this.storage.get(entity);
 		if (!data) { return false; }
 		return keysPresent(data, components);
 	}
 
-	findEntities<C extends KeyOf<AllComponents>>(...components: C[]): FindResult<AllComponents, C>[] {
+	findEntities<C extends ComponentName<AllComponents>>(...components: C[]): FindResult<AllComponents, C>[] {
 		let result: FindResult<AllComponents, C>[] = [];
 
 		for (let [entity, storage] of this.storage.entries()) {
@@ -106,33 +106,33 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 	}
 
 	/** world.getComponent(3, "position") -> {x,y} | undefined */
-	getComponent<C extends KeyOf<AllComponents>>(entity: Entity, component: C): AllComponents[C] | undefined {
+	getComponent<C extends ComponentName<AllComponents>>(entity: Entity, component: C): AllComponents[C] | undefined {
 		let data = this.storage.get(entity);
 		return data ? data[component] : undefined;
 	}
 
 	/** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | undefined */
-	getComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): ComponentBag<AllComponents, C> | undefined {
+	getComponents<C extends ComponentName<AllComponents>>(entity: Entity, ...components: C[]): ComponentBag<AllComponents, C> | undefined {
 		let data = this.storage.get(entity);
 		if (!data || !keysPresent(data, components)) { return undefined; }
 		return data as ComponentBag<AllComponents, C>;
 	}
 
 	/** world.requireComponent(3, "position") -> {x,y} | throw */
-	requireComponent<C extends KeyOf<AllComponents>>(entity: Entity, component: C): AllComponents[C] {
+	requireComponent<C extends ComponentName<AllComponents>>(entity: Entity, component: C): AllComponents[C] {
 		let result = this.getComponent(entity, component);
 		if (!result) { throw new Error(`entity ${entity} is missing the required component ${component}`); }
 		return result;
 	}
 
 	/** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | throw */
-	requireComponents<C extends KeyOf<AllComponents>>(entity: Entity, ...components: C[]): ComponentBag<AllComponents, C> {
+	requireComponents<C extends ComponentName<AllComponents>>(entity: Entity, ...components: C[]): ComponentBag<AllComponents, C> {
 		let result = this.getComponents(entity, ...components);
 		if (!result) { throw new Error(`entity ${entity} is missing the required components ${components}`); }
 		return result;
 	}
 /* */
-	query(...components: KeyOf<AllComponents>[]) {
+	query<C extends ComponentName<AllComponents>>(...components: C[]) {
 		return new Query(this, ...components);
 	}
 	/*	*/
@@ -141,18 +141,3 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 function keysPresent(data: Record<string, unknown>, keys: string[]) {
 	return keys.every(key => key in data);
 }
-
-let w1 = new World<{a:number, b:number}>();
-let w2 = new World<{a:number}>();
-
-w2 = w1;
-
-/*
-
-let w = new World<{a:{x:number}}>();
-let c = w.getComponents(1, "a");
-if (c) {
-	c.a.x = 4;
-}
-
-*/
