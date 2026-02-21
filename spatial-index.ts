@@ -35,6 +35,7 @@ export class SpatialIndex {
 	}
 
 	list(x: number, y: number): Set<Entity> {
+		if (x < 0 || y < 0) { return new Set(); }
 		return getSetFor(x, y, this.data);
 	}
 }

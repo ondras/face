@@ -44,3 +44,16 @@ Deno.test("spatial index", () => {
 	si.update(e2);
 	assertEquals(si.list(5, 5).size, 0);
 });
+
+Deno.test("negative coordinates", () => {
+	let w = new World<Components>();
+	let si = new SpatialIndex(w);
+
+	let e = w.createEntity({position: {x:1, y:1}});
+	si.update(e);
+
+	assertEquals(si.list(-1, 1).size, 0);
+	assertEquals(si.list(1, -1).size, 0);
+	assertEquals(si.list(-1, -1).size, 0);
+	assertEquals(si.list(1, 1).size, 1);
+});
