@@ -13,7 +13,7 @@ interface Components {
 }
 
 export class DurationActorScheduler {
-	query: Query<Components, "actor">;
+	query: Query<"actor">;
 
 	constructor(protected world: World<Components>) {
 		this.query = world.query("actor");

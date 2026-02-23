@@ -1,14 +1,12 @@
 import { Entity, World } from "./world.ts"
 
 
-type ComponentName<T> = keyof T & string;
-
-export default class Query<AllComponents, C extends ComponentName<AllComponents>> extends EventTarget {
+export default class Query<C extends string> extends EventTarget {
 	protected ac = new AbortController();
 	readonly entities = new Set<Entity>();
 	protected components: C[];
 
-	constructor(world: World<AllComponents>, ...components: C[]) {
+	constructor(world: World<Record<C, unknown>>, ...components: C[]) {
 		super();
 
 		this.components = components;
