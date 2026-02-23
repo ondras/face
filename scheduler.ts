@@ -1,28 +1,38 @@
 // deno-lint-ignore-file prefer-const
 
 import { Entity, World } from "./world.ts";
+import Query from "./query.ts"
 
 
 export interface Actor {
 	wait: number;
 }
 
+interface Components {
+	actor: Actor;
+}
+
 export class DurationActorScheduler {
-	constructor(protected world: World<{actor: Actor}>) {}
+	query: Query<Components, "actor">;
+
+	constructor(protected world: World<Components>) {
+		this.query = world.query("actor");
+	}
 
 	next(): Entity | undefined {
-		let results = this.world.findEntities("actor");
+		const { world, query } = this;
+		let { entities } = query;
 
-		let minWait = 1/0;
-		let minEntity: Entity | undefined;
+		// entity->actor mapping for easy access
+		let actors = new Map<Entity, Actor>();
+		entities.forEach(entity => actors.set(entity, world.requireComponent(entity, "actor")));
 
-		results.forEach((components, entity) => {
-			if (components.actor.wait < minWait) {
-				minWait = components.actor.wait;
-				minEntity = entity;
-			}
-		});
-		results.forEach(r => r.actor.wait -= minWait);
+		// best entity (with lowest wait time)
+		let minEntity = findMinWait(actors);
+		if (!minEntity) { return undefined; }
+
+		let minWait = actors.get(minEntity)!.wait;
+		actors.forEach(actor => actor.wait -= minWait);
 
 		return minEntity;
 	}
@@ -30,6 +40,20 @@ export class DurationActorScheduler {
 	commit(entity: Entity, duration: number) {
 		this.world.requireComponent(entity, "actor").wait += duration;
 	}
+}
+
+function findMinWait(actors: Map<Entity, Actor>): Entity | undefined {
+	let minWait = 1/0;
+	let minEntity: Entity | undefined;
+
+	actors.forEach((actor, entity) => {
+		if (actor.wait < minWait) {
+			minWait = actor.wait;
+			minEntity = entity;
+		}
+	});
+
+	return minEntity;
 }
 
 export class FairActorScheduler extends DurationActorScheduler {
