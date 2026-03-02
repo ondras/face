@@ -144,7 +144,7 @@ Deno.test("mutable component", () => {
 	let position = {x:1, y:2};
 	w.addComponent(e, "position", position);
 	position.x = 3;
-	assertEquals(w.requireComponent(e, "position").x, 1);
+	assertEquals(w.requireComponent(e, "position").x, 3);
 });
 
 Deno.test("remove entity", () => {
