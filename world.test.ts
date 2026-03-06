@@ -203,3 +203,29 @@ Deno.test("events", () => {
 	assertEquals(events[0].detail.entity, e1);
 	events = [];
 });
+
+Deno.test("de/serialization", () => {
+	let w = new World<Components>();
+	let e1 = w.createEntity();
+	let position = {x:1, y:2};
+	w.addComponent(e1, "position", position);
+
+	let q = w.query("position");
+
+	let str = w.toString();
+
+	position.x = 3;
+	assertEquals(w.requireComponent(e1, "position").x, 3);
+
+	let e2 = w.createEntity({"position": position});
+	assertEquals(w.requireComponent(e2, "position").x, 3);
+
+	assertEquals(q.entities.size, 2);
+
+	w.fromString(str);
+
+	assertEquals(w.requireComponent(e1, "position").x, 1);
+	assertEquals(w.getComponent(e2, "position"), undefined);
+
+	assertEquals(q.entities.size, 1);
+});

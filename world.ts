@@ -16,6 +16,7 @@ export interface Events<AllComponents> {
 	"entity-remove": CustomEvent<{ entity: Entity }>;
 	"component-add": CustomEvent<{ entity: Entity; component: ComponentName<AllComponents>; }>;
 	"component-remove": CustomEvent<{ entity: Entity; component: ComponentName<AllComponents>; }>;
+	"reset": CustomEvent;
 }
 
 // private
@@ -130,6 +131,23 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 
 	query<C extends ComponentName<AllComponents>>(...components: C[]) {
 		return new Query(this, ...components);
+	}
+
+	toString(): string {
+		let dict: Record<string, unknown> = {};
+		for (let [entity, components] of this.storage.entries()) {
+			dict[entity] = components;
+		}
+		return JSON.stringify(dict);
+	}
+
+	fromString(str: string) {
+		let dict = JSON.parse(str);
+		this.storage.clear();
+		for (let key in dict) {
+			this.storage.set(Number(key), dict[key]);
+		}
+		this.dispatchEvent(new CustomEvent("reset"));
 	}
 }
 

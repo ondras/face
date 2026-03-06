@@ -15,6 +15,7 @@ export default class Query<C extends string> extends EventTarget {
 		world.addEventListener("component-add", e => this.onAddComponent(e.detail.entity, e.detail.component as C), options);
 		world.addEventListener("component-remove", e => this.onRemoveComponent(e.detail.entity, e.detail.component as C), options);
 		world.addEventListener("entity-remove", e => this.onRemoveEntity(e.detail.entity), options);
+		world.addEventListener("reset", e => this.onReset(e.target as World<Record<C, unknown>>), options);
 
 		world.findEntities(...components).keys().forEach(entity => this.entities.add(entity));
 	}
@@ -22,6 +23,14 @@ export default class Query<C extends string> extends EventTarget {
 	destroy() {
 		this.entities.clear();
 		this.ac.abort();
+	}
+
+	protected onReset(world: World<Record<C, unknown>>) {
+		const { entities, components } = this;
+		entities.clear();
+		world.findEntities(...components).keys().forEach(entity => entities.add(entity));
+
+		this.dispatchEvent(new Event("change"));
 	}
 
 	protected onAddComponent(entity: Entity, component: C) {
