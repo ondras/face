@@ -38,6 +38,13 @@ export class SpatialIndex {
 		if (x < 0 || y < 0) { return new Set(); }
 		return getSetFor(x, y, this.data);
 	}
+
+	reset() {
+		const { world } = this;
+		this.data = [];
+		let entities = world.findEntities("position").keys();
+		for (let entity of entities) { this.update(entity); }
+	}
 }
 
 function getSetFor(x: number, y: number, data: Set<Entity>[][]): Set<Entity> {
