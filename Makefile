@@ -1,6 +1,5 @@
 test:
-	rm -rf coverage
-	deno test --coverage
+	deno test --coverage --clean
 	deno coverage --detailed
 
 example:
