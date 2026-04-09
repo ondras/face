@@ -1,5 +1,5 @@
 import RlDisplay from "@ondras/rl-display";
-import { World, Entity, SpatialIndex, PubSub } from "../face.ts";
+import { World, SpatialIndex } from "face.ts";
 
 
 interface Blocks {
@@ -28,29 +28,14 @@ type Actor = {
 }
 
 interface Components {
-    position: Position; // anything bound to a set of coordinates
-    visual: Visual;     // anything with a visual representation
+    visual: Visual;     // anything that *could* be visible
+    position: Position; // anything that *is visible somewhere*
     actor: Actor;       // anything that generates actions
-    blocks: Blocks;     // anything
+    blocks: Blocks;     // anything that blocks movement and/or sight
     health: Health;     // anything with the concept of "alive" and "damage-able"
 }
 
 export const world = new World<Components>();
-
-
-interface Messages {
-	"visual-show": {
-		entity: Entity;
-	};
-	"visual-hide": {
-		entity: Entity;
-	};
-	"visual-move": {
-		entity: Entity;
-	}
-}
-export const pubsub = new PubSub<Messages>();
-
 
 export const spatialIndex = new SpatialIndex(world);
 

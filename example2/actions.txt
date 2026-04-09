@@ -1,0 +1,5 @@
+scheduler vybere actora
+actor generuje akce
+akce jsou frontovany a zpracovavany
+zpracovani akce muze vyprodukovat nove (move -> step on trap -> damage -> death -> place item)
+*nekdo* v nejakou chvili rozhodne, ze cas vyprsel (=akce trvala nejakou dobu), commitne actora a jde se na dalsiho

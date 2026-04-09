@@ -229,3 +229,23 @@ Deno.test("de/serialization", () => {
 
 	assertEquals(q.entities.size, 1);
 });
+
+Deno.test("fromString resets entity counter", () => {
+	let w = new World<Components>();
+
+	let e1 = w.createEntity({position: {x:1, y:1}});
+	let e2 = w.createEntity({position: {x:2, y:2}});
+	let snapshot = w.toString();
+
+	let e3 = w.createEntity({position: {x:3, y:3}});
+	assertEquals(e3, 3);
+
+	w.fromString(snapshot);
+
+	let e4 = w.createEntity({position: {x:4, y:4}});
+
+	assertEquals(e4, 3);
+	assertEquals(w.requireComponent(e1, "position"), {x:1, y:1});
+	assertEquals(w.requireComponent(e2, "position"), {x:2, y:2});
+	assertEquals(w.requireComponent(e4, "position"), {x:4, y:4});
+});

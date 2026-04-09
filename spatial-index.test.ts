@@ -57,3 +57,20 @@ Deno.test("negative coordinates", () => {
 	assertEquals(si.list(-1, -1).size, 0);
 	assertEquals(si.list(1, 1).size, 1);
 });
+
+Deno.test("rebuilds after world fromString", () => {
+	let w = new World<Components>();
+	let si = new SpatialIndex(w);
+
+	let snapshot = w.toString();
+
+	let e1 = w.createEntity({position: {x:1, y:1}});
+	si.update(e1);
+
+	assertEquals(si.list(1, 1).size, 1);
+	assert(si.list(1, 1).has(e1));
+
+	w.fromString(snapshot);
+
+	assertEquals(si.list(1, 1).size, 0);
+});

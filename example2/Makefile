@@ -1,3 +1,5 @@
 index.js: *.ts
-	deno bundle index.ts -o $@
+	deno bundle --check index.ts -o $@
 
+check:
+	deno check

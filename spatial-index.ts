@@ -39,9 +39,11 @@ export class SpatialIndex {
 		return getSetFor(x, y, this.data);
 	}
 
-	reset() {
+	rebuild() {
 		const { world } = this;
 		this.data = [];
+		this.entityToSet.clear();
+
 		let entities = world.findEntities("position").keys();
 		for (let entity of entities) { this.update(entity); }
 	}

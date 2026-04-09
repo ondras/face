@@ -1,16 +1,6 @@
 import { world, spatialIndex, Position } from "./world.ts";
 
 
-declare global {
-	interface Array<T> {
-		random(): T;
-	}
-}
-
-Array.prototype.random = function() {
-	return this[Math.floor(Math.random()*this.length)];
-}
-
 export const DIRS = [
 	[0, -1],
 	[1, -1],
@@ -22,23 +12,6 @@ export const DIRS = [
 	[-1, -1]
 ] as [number, number][];
 
-export const NumpadOffsets = {
-	"Numpad1": [-1,  1],
-	"Numpad2": [ 0,  1],
-	"Numpad3": [ 1,  1],
-	"Numpad4": [-1,  0],
-	"Numpad6": [ 1,  0],
-	"Numpad7": [-1, -1],
-	"Numpad8": [ 0, -1],
-	"Numpad9": [ 1, -1]
-}
-
-export const ArrowAliases = {
-	"ArrowLeft": "Numpad4",
-	"ArrowRight": "Numpad6",
-	"ArrowUp": "Numpad8",
-	"ArrowDown": "Numpad2",
-}
 
 export function sleep(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -49,11 +22,11 @@ export function ring(center: Position) {
 }
 
 export function canMoveTo(x: number, y: number) {
-	return spatialIndex.list(x, y).every(entity => {
+	for (let entity of spatialIndex.list(x, y)) {
 		let blocks = world.getComponent(entity, "blocks");
 		if (blocks?.movement) { return false; }
-		return true;
-	});
+	}
+	return true;
 }
 
 export function readKey(): Promise<KeyboardEvent> {

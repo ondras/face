@@ -1,6 +1,7 @@
 {
   "imports": {
-	"@ondras/rl-display": "jsr:@ondras/rl-display@^2.0.0"
+  	"@ondras/rl-display": "jsr:@ondras/rl-display@^2.0.0",
+  	"face.ts": "../face.ts"
   },
   "compilerOptions": {
     "lib": ["esnext", "dom", "dom.asynciterable"]

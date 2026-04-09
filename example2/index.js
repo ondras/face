@@ -1,12 +1,92 @@
+// ../query.ts
+var Query = class extends EventTarget {
+  ac = new AbortController();
+  entities = /* @__PURE__ */ new Set();
+  components;
+  constructor(world2, ...components) {
+    super();
+    this.components = components;
+    const options = {
+      signal: this.ac.signal
+    };
+    world2.addEventListener("component-add", (e) => this.onAddComponent(e.detail.entity, e.detail.component), options);
+    world2.addEventListener("component-remove", (e) => this.onRemoveComponent(e.detail.entity, e.detail.component), options);
+    world2.addEventListener("entity-remove", (e) => this.onRemoveEntity(e.detail.entity), options);
+    world2.addEventListener("reset", (e) => this.onReset(e.target), options);
+    world2.findEntities(...components).keys().forEach((entity) => this.entities.add(entity));
+  }
+  destroy() {
+    this.entities.clear();
+    this.ac.abort();
+  }
+  onReset(world2) {
+    const { entities, components } = this;
+    entities.clear();
+    world2.findEntities(...components).keys().forEach((entity) => entities.add(entity));
+    this.dispatchEvent(new Event("change"));
+  }
+  onAddComponent(entity, component) {
+    const { entities, components } = this;
+    if (!components.includes(component)) {
+      return;
+    }
+    entities.add(entity);
+    this.dispatchEvent(new Event("change"));
+  }
+  onRemoveComponent(entity, component) {
+    const { entities, components } = this;
+    if (!components.includes(component)) {
+      return;
+    }
+    entities.delete(entity);
+    this.dispatchEvent(new Event("change"));
+  }
+  onRemoveEntity(entity) {
+    const { entities } = this;
+    if (!entities.has(entity)) {
+      return;
+    }
+    entities.delete(entity);
+    this.dispatchEvent(new Event("change"));
+  }
+};
+
+// ../typed-event-target.ts
+var TypedEventTarget = class extends EventTarget {
+  addEventListener(type, listener, options) {
+    return super.addEventListener(type, listener, options);
+  }
+  removeEventListener(type, listener, options) {
+    return super.removeEventListener(type, listener, options);
+  }
+};
+
 // ../world.ts
-var World = class extends EventTarget {
+var World = class extends TypedEventTarget {
   storage = /* @__PURE__ */ new Map();
   counter = 0;
-  createEntity(initialComponents = {}) {
+  /** world.createEntity({position:{x,y}}) */
+  createEntity(init2) {
     let entity = ++this.counter;
-    initialComponents && this.addComponents(entity, initialComponents);
+    let detail = {
+      entity
+    };
+    this.dispatchEvent(new CustomEvent("entity-create", {
+      detail
+    }));
+    init2 && this.addComponents(entity, init2);
     return entity;
   }
+  removeEntity(entity) {
+    let detail = {
+      entity
+    };
+    this.dispatchEvent(new CustomEvent("entity-remove", {
+      detail
+    }));
+    this.storage.delete(entity);
+  }
+  /** world.addComponent(3, "position", {x,y}) */
   addComponent(entity, componentName, componentData) {
     const { storage } = this;
     let data = storage.get(entity);
@@ -14,18 +94,37 @@ var World = class extends EventTarget {
       data = {};
       storage.set(entity, data);
     }
-    data[componentName] = structuredClone(componentData);
+    data[componentName] = componentData;
+    let detail = {
+      entity,
+      component: componentName
+    };
+    this.dispatchEvent(new CustomEvent("component-add", {
+      detail
+    }));
   }
+  /** world.addComponent(3, {position:{x,y}, name:{...}}) */
   addComponents(entity, components) {
     for (let name in components) {
       this.addComponent(entity, name, components[name]);
     }
   }
+  /** world.removeComponents(3, "position", "name", ...) */
   removeComponents(entity, ...components) {
     const { storage } = this;
     let data = storage.get(entity);
-    components.forEach((component) => delete data[component]);
+    components.forEach((component) => {
+      delete data[component];
+      let detail = {
+        entity,
+        component
+      };
+      this.dispatchEvent(new CustomEvent("component-remove", {
+        detail
+      }));
+    });
   }
+  /** world.hasComponents(3, "position", "name", ...) */
   hasComponents(entity, ...components) {
     let data = this.storage.get(entity);
     if (!data) {
@@ -33,25 +132,31 @@ var World = class extends EventTarget {
     }
     return keysPresent(data, components);
   }
+  /** world.findEntities("position") -> Map<3, {position:{x,y}}> */
   findEntities(...components) {
-    let result = [];
+    let result = /* @__PURE__ */ new Map();
     for (let [entity, storage] of this.storage.entries()) {
-      if (keysPresent(storage, components)) {
-        result.push({
-          entity,
-          ...storage
-        });
+      if (!keysPresent(storage, components)) {
+        continue;
       }
+      result.set(entity, storage);
     }
     return result;
   }
+  /** world.getComponent(3, "position") -> {x,y} | undefined */
   getComponent(entity, component) {
     let data = this.storage.get(entity);
-    return data ? data[component] : data;
+    return data ? data[component] : void 0;
   }
-  getComponents(entity, ..._components) {
-    return this.storage.get(entity);
+  /** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | undefined */
+  getComponents(entity, ...components) {
+    let data = this.storage.get(entity);
+    if (!data || !keysPresent(data, components)) {
+      return void 0;
+    }
+    return data;
   }
+  /** world.requireComponent(3, "position") -> {x,y} | throw */
   requireComponent(entity, component) {
     let result = this.getComponent(entity, component);
     if (!result) {
@@ -59,12 +164,31 @@ var World = class extends EventTarget {
     }
     return result;
   }
+  /** world.getComponents(3, "position", "name") -> {position:{x,y}, name:{...}} | throw */
   requireComponents(entity, ...components) {
     let result = this.getComponents(entity, ...components);
-    if (!result || !keysPresent(result, components)) {
+    if (!result) {
       throw new Error(`entity ${entity} is missing the required components ${components}`);
     }
     return result;
+  }
+  query(...components) {
+    return new Query(this, ...components);
+  }
+  toString() {
+    let dict = {};
+    for (let [entity, components] of this.storage.entries()) {
+      dict[entity] = components;
+    }
+    return JSON.stringify(dict);
+  }
+  fromString(str) {
+    let dict = JSON.parse(str);
+    this.storage.clear();
+    for (let key in dict) {
+      this.storage.set(Number(key), dict[key]);
+    }
+    this.dispatchEvent(new CustomEvent("reset"));
   }
 };
 function keysPresent(data, keys) {
@@ -72,51 +196,49 @@ function keysPresent(data, keys) {
 }
 
 // ../scheduler.ts
-var FairActorScheduler = class {
+var DurationActorScheduler = class {
   world;
+  query;
   constructor(world2) {
     this.world = world2;
+    this.query = world2.query("actor");
   }
   next() {
-    let results = this.world.findEntities("actor");
-    if (!results.length) {
+    const { world: world2, query } = this;
+    let { entities } = query;
+    let actors = /* @__PURE__ */ new Map();
+    entities.forEach((entity) => actors.set(entity, world2.requireComponent(entity, "actor")));
+    let minEntity = findMinWait(actors);
+    if (!minEntity) {
       return void 0;
     }
-    let result = results.find(({ actor }) => actor.wait == 0);
-    if (result) {
-      result.actor.wait = 1;
-      return result.entity;
-    } else {
-      results.forEach(({ actor }) => actor.wait = 0);
-      return this.next();
-    }
+    let minWait = actors.get(minEntity).wait;
+    actors.forEach((actor) => actor.wait -= minWait);
+    return minEntity;
+  }
+  commit(entity, duration) {
+    this.world.requireComponent(entity, "actor").wait += duration;
   }
 };
-
-// ../pubsub.ts
-var PubSub = class {
-  listenerStorage = /* @__PURE__ */ new Map();
-  subscribe(message, listener) {
-    this.listenersFor(message).add(listener);
-  }
-  unsubscribe(message, listener) {
-    this.listenersFor(message).delete(listener);
-  }
-  async publish(message, data) {
-    let listeners = this.listenersFor(message);
-    let promises = [
-      ...listeners
-    ].map((listener) => listener(data));
-    await Promise.all(promises);
-  }
-  listenersFor(message) {
-    const { listenerStorage } = this;
-    let listeners = listenerStorage.get(message);
-    if (!listeners) {
-      listeners = /* @__PURE__ */ new Set();
-      listenerStorage.set(message, listeners);
+function findMinWait(actors) {
+  let minWait = 1 / 0;
+  let minEntity;
+  actors.forEach((actor, entity) => {
+    if (actor.wait < minWait) {
+      minWait = actor.wait;
+      minEntity = entity;
     }
-    return listeners;
+  });
+  return minEntity;
+}
+var FairActorScheduler = class extends DurationActorScheduler {
+  next() {
+    let result = super.next();
+    if (!result) {
+      return void 0;
+    }
+    this.commit(result, 1);
+    return result;
   }
 };
 
@@ -124,50 +246,135 @@ var PubSub = class {
 var SpatialIndex = class {
   world;
   data = [];
+  entityToSet = /* @__PURE__ */ new Map();
   constructor(world2) {
     this.world = world2;
   }
   update(entity) {
-    const { world: world2, data } = this;
-    data.forEach((col) => {
-      col.forEach((entities) => {
-        let index = entities.indexOf(entity);
-        if (index > -1) {
-          entities.splice(index, 1);
-        }
-      });
-    });
-    let position = world2.getComponent(entity, "position");
+    const { world: world2, data, entityToSet } = this;
+    const existingSet = entityToSet.get(entity);
+    if (existingSet) {
+      existingSet.delete(entity);
+      entityToSet.delete(entity);
+    }
+    const position = world2.getComponent(entity, "position");
     if (position) {
-      let storage = getStorageFor(position.x, position.y, data);
-      storage.push(entity);
+      const storage = getSetFor(position.x, position.y, data);
+      storage.add(entity);
+      entityToSet.set(entity, storage);
     }
   }
   list(x, y) {
-    return getStorageFor(x, y, this.data);
+    if (x < 0 || y < 0) {
+      return /* @__PURE__ */ new Set();
+    }
+    return getSetFor(x, y, this.data);
+  }
+  reset() {
+    const { world: world2 } = this;
+    this.data = [];
+    let entities = world2.findEntities("position").keys();
+    for (let entity of entities) {
+      this.update(entity);
+    }
   }
 };
-function getStorageFor(x, y, data) {
+function getSetFor(x, y, data) {
   while (data.length <= x) {
     data.push([]);
   }
-  let col = data[x];
+  const col = data[x];
   while (col.length <= y) {
-    col.push([]);
+    col.push(/* @__PURE__ */ new Set());
   }
   return col[y];
 }
 
 // world.ts
 var world = new World();
-var pubsub = new PubSub();
 var spatialIndex = new SpatialIndex(world);
 var display = document.querySelector("rl-display");
 
-// utils.ts
-Array.prototype.random = function() {
-  return this[Math.floor(Math.random() * this.length)];
+// action/pipeline.ts
+var Pipeline = class {
+  processors = [];
+  queue = [];
+  push(action) {
+    this.queue.push(action);
+  }
+  addProcessor(processor) {
+    this.processors.push(processor);
+  }
+  async run() {
+    const { queue, processors } = this;
+    while (queue.length) {
+      let action = queue.shift();
+      for (let processor of processors) {
+        await processor(action);
+      }
+    }
+  }
 };
+
+// action/spatial-index-processor.ts
+function spatialIndexProcessor(action) {
+  switch (action.type) {
+    case "spawn":
+      spatialIndex.update(action.entity);
+      break;
+  }
+}
+
+// action/console-processor.ts
+function consoleProcessor(action) {
+  console.log(action);
+}
+
+// action/game-processor.ts
+function gameProcessor(action) {
+  switch (action.type) {
+    case "spawn": {
+      world.addComponent(action.entity, "position", action.position);
+    }
+  }
+}
+
+// geom.ts
+function distEuclidean(x1, y1, x2, y2) {
+  let dx = x1 - x2;
+  let dy = y1 - y2;
+  return Math.sqrt(dx ** 2 + dy ** 2);
+}
+
+// action/display-processor.ts
+async function displayProcessor(action) {
+  switch (action.type) {
+    case "spawn":
+      {
+        const { position, entity } = action;
+        const visual = world.requireComponent(entity, "visual");
+        display.draw(position.x, position.y, visual, {
+          zIndex: position.zIndex,
+          id: entity
+        });
+      }
+      break;
+    case "shoot": {
+      const { entity, target } = action;
+      const source = world.requireComponent(entity, "position");
+      let projectile = display.draw(source.x, source.y, {
+        ch: "*",
+        fg: "yellow"
+      }, {
+        zIndex: 3
+      });
+      let dist = distEuclidean(source.x, source.y, target.x, target.y);
+      await display.move(projectile, target.x, target.y, dist * 20);
+    }
+  }
+}
+
+// brain/utils.ts
 function readKey() {
   let { promise, resolve } = Promise.withResolvers();
   window.addEventListener("keydown", resolve, {
@@ -175,69 +382,29 @@ function readKey() {
   });
   return promise;
 }
-function distEuclidean(x1, y1, x2, y2) {
-  let dx = x1 - x2;
-  let dy = y1 - y2;
-  return Math.sqrt(dx ** 2 + dy ** 2);
-}
 
-// pc.ts
-function createEntity(x, y) {
-  let visual = {
-    ch: "@",
-    fg: "red"
-  };
-  let blocks = {
-    movement: true,
-    sight: false
-  };
-  let position = {
-    x,
-    y,
-    zIndex: 2
-  };
-  let entity = world.createEntity({
-    position,
-    visual,
-    blocks,
-    actor: {
-      wait: 0,
-      brain: "pc"
-    },
-    health: {
-      hp: 10
-    }
-  });
-  spatialIndex.update(entity);
-  display.draw(position.x, position.y, visual, {
-    zIndex: 1,
-    id: entity
-  });
-  return entity;
-}
-async function shoot(entity) {
-  let tx = Math.floor(Math.random() * display.cols);
-  let ty = Math.floor(Math.random() * display.rows);
-  let source = world.requireComponent(entity, "position");
-  let projectile = display.draw(source.x, source.y, {
-    ch: "*",
-    fg: "yellow"
-  }, {
-    zIndex: 3
-  });
-  let dist = distEuclidean(source.x, source.y, tx, ty);
-  await display.move(projectile, tx, ty, dist * 20);
-}
-async function act(entity) {
+// brain/pc.ts
+async function procureAction(entity) {
   while (true) {
     let event = await readKey();
-    await shoot(entity);
-    return;
+    let tx = Math.floor(Math.random() * display.cols);
+    let ty = Math.floor(Math.random() * display.rows);
+    return {
+      type: "shoot",
+      entity,
+      target: {
+        x: tx,
+        y: ty
+      }
+    };
   }
 }
 
-// npc.ts
-async function act2(entity) {
+// brain/npc.ts
+function procureAction2(entity) {
+  return {
+    type: "idle"
+  };
 }
 
 // deno:https://jsr.io/@ondras/rl-display/2.0.0/src/storage.ts
@@ -688,6 +855,11 @@ function updateVisual(node, visual) {
   updateProperties(node, props);
 }
 
+// random.ts
+Array.prototype.random = function() {
+  return this[Math.floor(Math.random() * this.length)];
+};
+
 // index.ts
 var w = 30;
 var h = 10;
@@ -703,20 +875,58 @@ for (let i = 0; i < w; i++) {
     });
   }
 }
+var pipeline = new Pipeline();
+pipeline.addProcessor(consoleProcessor);
+pipeline.addProcessor(gameProcessor);
+pipeline.addProcessor(spatialIndexProcessor);
+pipeline.addProcessor(displayProcessor);
+async function init() {
+  let pc = world.createEntity({
+    visual: {
+      ch: "@",
+      fg: "red"
+    },
+    blocks: {
+      movement: true,
+      sight: false
+    },
+    actor: {
+      wait: 0,
+      brain: "pc"
+    },
+    health: {
+      hp: 10
+    }
+  });
+  pipeline.push({
+    type: "spawn",
+    entity: pc,
+    position: {
+      x: 5,
+      y: 5,
+      zIndex: 1
+    }
+  });
+  await pipeline.run();
+}
+await init();
 var scheduler = new FairActorScheduler(world);
-var pcEntity = createEntity(5, 5);
+function procureAction3(entity) {
+  let brain = world.requireComponent(entity, "actor").brain;
+  switch (brain) {
+    case "pc":
+      return procureAction(entity);
+    case "npc":
+      return procureAction2(entity);
+  }
+}
 while (true) {
   let actor = scheduler.next();
   if (!actor) {
     break;
   }
-  let brain = world.requireComponent(actor, "actor").brain;
-  switch (brain) {
-    case "pc":
-      await act(actor);
-      break;
-    case "npc":
-      await act2(actor);
-      break;
-  }
+  let action = await procureAction3(actor);
+  scheduler.commit(actor, "duration" in action ? action.duration : 1);
+  pipeline.push(action);
+  await pipeline.run();
 }
