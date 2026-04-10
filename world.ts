@@ -52,7 +52,7 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 			data = {};
 			storage.set(entity, data);
 		}
-		data[componentName] = componentData;
+		data[componentName] = structuredClone(componentData);
 
 		let detail = {
 			entity,

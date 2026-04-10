@@ -143,7 +143,7 @@ Deno.test("mutable component", () => {
 	let e = w.createEntity();
 	let position = {x:1, y:2};
 	w.addComponent(e, "position", position);
-	position.x = 3;
+	w.requireComponent(e, "position").x = 3;
 	assertEquals(w.requireComponent(e, "position").x, 3);
 });
 
@@ -214,10 +214,10 @@ Deno.test("de/serialization", () => {
 
 	let str = w.toString();
 
-	position.x = 3;
+	w.requireComponent(e1, "position").x = 3;
 	assertEquals(w.requireComponent(e1, "position").x, 3);
 
-	let e2 = w.createEntity({"position": position});
+	let e2 = w.createEntity({"position": {x:3, y:2}});
 	assertEquals(w.requireComponent(e2, "position").x, 3);
 
 	assertEquals(q.entities.size, 2);
@@ -248,4 +248,20 @@ Deno.test("fromString resets entity counter", () => {
 	assertEquals(w.requireComponent(e1, "position"), {x:1, y:1});
 	assertEquals(w.requireComponent(e2, "position"), {x:2, y:2});
 	assertEquals(w.requireComponent(e4, "position"), {x:4, y:4});
+});
+
+Deno.test("component data is decoupled from original object", () => {
+	let w = new World<Components>();
+
+	let pos = {x:1, y:1};
+	let e1 = w.createEntity({position: pos});
+	let e2 = w.createEntity({position: pos});
+
+	assert(w.requireComponent(e1, "position") != pos);
+	assert(w.requireComponent(e2, "position") != pos);
+	assert(w.requireComponent(e1, "position") != w.requireComponent(e2, "position"));
+
+	pos.x = 99;
+	assertEquals(w.requireComponent(e1, "position"), {x:1, y:1});
+	assertEquals(w.requireComponent(e2, "position"), {x:1, y:1});
 });
