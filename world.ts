@@ -142,11 +142,17 @@ export class World<AllComponents = object> extends TypedEventTarget<Events<AllCo
 	}
 
 	fromString(str: string) {
+		const { storage } = this;
+
+		let counter = 0;
 		let dict = JSON.parse(str);
-		this.storage.clear();
+		storage.clear();
 		for (let key in dict) {
-			this.storage.set(Number(key), dict[key]);
+			let entity = Number(key);
+			storage.set(entity, dict[key]);
+			if (entity > counter) { counter = entity; }
 		}
+		this.counter = counter;
 		this.dispatchEvent(new CustomEvent("reset"));
 	}
 }

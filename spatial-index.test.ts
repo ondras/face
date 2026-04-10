@@ -74,3 +74,25 @@ Deno.test("rebuilds after world fromString", () => {
 
 	assertEquals(si.list(1, 1).size, 0);
 });
+
+Deno.test("rebuild restores entities from snapshot", () => {
+	let w = new World<Components>();
+	let si = new SpatialIndex(w);
+
+	let e1 = w.createEntity({position: {x:2, y:3}});
+	si.update(e1);
+	let snapshot = w.toString();
+
+	w.requireComponent(e1, "position").x = 4;
+	w.requireComponent(e1, "position").y = 5;
+	si.update(e1);
+
+	assertEquals(si.list(2, 3).size, 0);
+	assertEquals(si.list(4, 5).size, 1);
+
+	w.fromString(snapshot);
+
+	assertEquals(si.list(2, 3).size, 1);
+	assert(si.list(2, 3).has(e1));
+	assertEquals(si.list(4, 5).size, 0);
+});

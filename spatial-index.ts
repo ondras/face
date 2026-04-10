@@ -15,6 +15,7 @@ export class SpatialIndex {
 
 	constructor(world: World) {
 		this.world = world;
+		world.addEventListener("reset", () => this.rebuild());
 	}
 
 	update(entity: Entity) {
