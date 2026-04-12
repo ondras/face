@@ -18,7 +18,11 @@ export default async function displayProcessor(action: Action) {
 			let projectile = display.draw(source.x, source.y, {ch:"*", fg:"yellow"}, { zIndex: 3 });
 			let dist = geom.distEuclidean(source.x, source.y, target.x, target.y);
 			await display.move(projectile, target.x, target.y, dist * 20);
+		} break;
 
-		}
+		case "move": {
+			let position = world.requireComponent(action.entity, "position");
+			await display.move(action.entity, position.x, position.y);
+		} break;
 	}
 }

@@ -31,7 +31,7 @@ export function ring(center: Position) {
 }
 
 export function canMoveTo(x: number, y: number) {
-	return spatialIndex.list(x, y).every(entity => {
+	return [...spatialIndex.list(x, y)].every(entity => {
 		let blocks = world.getComponent(entity, "blocks");
 		if (blocks?.movement) { return false; }
 		return true;

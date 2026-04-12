@@ -4,6 +4,9 @@ import * as utils from "./utils.ts";
 import { Action } from "../action/actions.ts";
 
 
+type PromiseOrValue<T> = T | Promise<T>;
+
+
 export const NumpadOffsets = {
 	"Numpad1": [-1,  1],
 	"Numpad2": [ 0,  1],
@@ -22,25 +25,26 @@ export const ArrowAliases = {
 	"ArrowDown": "Numpad2",
 }
 
-function processEvent(e: KeyboardEvent, entity: Entity) {
+function eventToAction(e: KeyboardEvent, entity: Entity): PromiseOrValue<Action | null> {
 	let { code } = e;
 	if (code in ArrowAliases) { code = ArrowAliases[code as keyof typeof ArrowAliases]; }
 	if (code in NumpadOffsets) {
 		let offset = NumpadOffsets[code as keyof typeof NumpadOffsets];
-		let position = world.requireComponent(entity, "position");
+		let position = structuredClone(world.requireComponent(entity, "position"));
 		position.x += offset[0];
 		position.y += offset[1];
 
-		// FIXME show
-		return true;
+		return {type: "move", entity, position};
 	}
 
-	return false;
+	return null;
 }
 
 export async function procureAction(entity: Entity): Promise<Action> {
 	while (true) {
 		let event = await utils.readKey();
+		let action = await eventToAction(event, entity);
+		if (action) { return action; }
 		/*
 		let ok = processEvent(event, entity);
 		if (ok) { return; }

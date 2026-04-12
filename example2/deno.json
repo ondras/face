@@ -4,7 +4,8 @@
   	"face.ts": "../face.ts"
   },
   "compilerOptions": {
-    "lib": ["esnext", "dom", "dom.asynciterable"]
+    "lib": ["esnext", "dom", "dom.asynciterable"],
+    "noImplicitOverride": false
   },
   "lint": {
     "rules": {

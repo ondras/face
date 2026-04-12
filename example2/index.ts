@@ -1,7 +1,6 @@
-import { FairActorScheduler, Entity } from "face.ts";
+import { ActionPipeline, FairActorScheduler, Entity } from "face.ts";
 import { world, display } from "./world.ts";
 import { Action } from "./action/actions.ts";
-import Pipeline from "./action/pipeline.ts";
 
 import spatialIndexProcessor from "./action/spatial-index-processor.ts";
 import consoleProcessor from "./action/console-processor.ts";
@@ -24,7 +23,7 @@ for (let i=0;i<w;i++) {
 	}
 }
 
-let pipeline = new Pipeline();
+let pipeline = new ActionPipeline<Action>();
 pipeline.addProcessor(consoleProcessor);
 pipeline.addProcessor(gameProcessor);
 pipeline.addProcessor(spatialIndexProcessor);

@@ -6,6 +6,12 @@ export interface Idle {
 	type: "idle";
 }
 
+export interface Move {
+	type: "move";
+	entity: Entity;
+	position: Position;
+}
+
 export interface Attack {
 	type: "attack";
 	duration: number;
@@ -31,4 +37,4 @@ export interface Shoot {
 	target: Position;
 }
 
-export type Action = Idle | Attack | Spawn | Damage | Shoot;
+export type Action = Idle | Move | Attack | Spawn | Damage | Shoot;

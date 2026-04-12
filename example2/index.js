@@ -94,7 +94,7 @@ var World = class extends TypedEventTarget {
       data = {};
       storage.set(entity, data);
     }
-    data[componentName] = componentData;
+    data[componentName] = structuredClone(componentData);
     let detail = {
       entity,
       component: componentName
@@ -183,11 +183,18 @@ var World = class extends TypedEventTarget {
     return JSON.stringify(dict);
   }
   fromString(str) {
+    const { storage } = this;
+    let counter = 0;
     let dict = JSON.parse(str);
-    this.storage.clear();
+    storage.clear();
     for (let key in dict) {
-      this.storage.set(Number(key), dict[key]);
+      let entity = Number(key);
+      storage.set(entity, dict[key]);
+      if (entity > counter) {
+        counter = entity;
+      }
     }
+    this.counter = counter;
     this.dispatchEvent(new CustomEvent("reset"));
   }
 };
@@ -249,6 +256,7 @@ var SpatialIndex = class {
   entityToSet = /* @__PURE__ */ new Map();
   constructor(world2) {
     this.world = world2;
+    world2.addEventListener("reset", () => this.rebuild());
   }
   update(entity) {
     const { world: world2, data, entityToSet } = this;
@@ -270,9 +278,10 @@ var SpatialIndex = class {
     }
     return getSetFor(x, y, this.data);
   }
-  reset() {
+  rebuild() {
     const { world: world2 } = this;
     this.data = [];
+    this.entityToSet.clear();
     let entities = world2.findEntities("position").keys();
     for (let entity of entities) {
       this.update(entity);
@@ -320,6 +329,7 @@ var Pipeline = class {
 function spatialIndexProcessor(action) {
   switch (action.type) {
     case "spawn":
+    case "move":
       spatialIndex.update(action.entity);
       break;
   }
@@ -333,9 +343,16 @@ function consoleProcessor(action) {
 // action/game-processor.ts
 function gameProcessor(action) {
   switch (action.type) {
-    case "spawn": {
-      world.addComponent(action.entity, "position", action.position);
-    }
+    case "spawn":
+      {
+        world.addComponent(action.entity, "position", action.position);
+      }
+      break;
+    case "move":
+      {
+        Object.assign(world.requireComponent(action.entity, "position"), action.position);
+      }
+      break;
   }
 }
 
@@ -359,18 +376,26 @@ async function displayProcessor(action) {
         });
       }
       break;
-    case "shoot": {
-      const { entity, target } = action;
-      const source = world.requireComponent(entity, "position");
-      let projectile = display.draw(source.x, source.y, {
-        ch: "*",
-        fg: "yellow"
-      }, {
-        zIndex: 3
-      });
-      let dist = distEuclidean(source.x, source.y, target.x, target.y);
-      await display.move(projectile, target.x, target.y, dist * 20);
-    }
+    case "shoot":
+      {
+        const { entity, target } = action;
+        const source = world.requireComponent(entity, "position");
+        let projectile = display.draw(source.x, source.y, {
+          ch: "*",
+          fg: "yellow"
+        }, {
+          zIndex: 3
+        });
+        let dist = distEuclidean(source.x, source.y, target.x, target.y);
+        await display.move(projectile, target.x, target.y, dist * 20);
+      }
+      break;
+    case "move":
+      {
+        let position = world.requireComponent(action.entity, "position");
+        await display.move(action.entity, position.x, position.y);
+      }
+      break;
   }
 }
 
@@ -384,9 +409,71 @@ function readKey() {
 }
 
 // brain/pc.ts
+var NumpadOffsets = {
+  "Numpad1": [
+    -1,
+    1
+  ],
+  "Numpad2": [
+    0,
+    1
+  ],
+  "Numpad3": [
+    1,
+    1
+  ],
+  "Numpad4": [
+    -1,
+    0
+  ],
+  "Numpad6": [
+    1,
+    0
+  ],
+  "Numpad7": [
+    -1,
+    -1
+  ],
+  "Numpad8": [
+    0,
+    -1
+  ],
+  "Numpad9": [
+    1,
+    -1
+  ]
+};
+var ArrowAliases = {
+  "ArrowLeft": "Numpad4",
+  "ArrowRight": "Numpad6",
+  "ArrowUp": "Numpad8",
+  "ArrowDown": "Numpad2"
+};
+function eventToAction(e, entity) {
+  let { code } = e;
+  if (code in ArrowAliases) {
+    code = ArrowAliases[code];
+  }
+  if (code in NumpadOffsets) {
+    let offset = NumpadOffsets[code];
+    let position = structuredClone(world.requireComponent(entity, "position"));
+    position.x += offset[0];
+    position.y += offset[1];
+    return {
+      type: "move",
+      entity,
+      position
+    };
+  }
+  return null;
+}
 async function procureAction(entity) {
   while (true) {
     let event = await readKey();
+    let action = await eventToAction(event, entity);
+    if (action) {
+      return action;
+    }
     let tx = Math.floor(Math.random() * display.cols);
     let ty = Math.floor(Math.random() * display.rows);
     return {
