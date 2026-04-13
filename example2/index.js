@@ -299,13 +299,8 @@ function getSetFor(x, y, data) {
   return col[y];
 }
 
-// world.ts
-var world = new World();
-var spatialIndex = new SpatialIndex(world);
-var display = document.querySelector("rl-display");
-
-// action/pipeline.ts
-var Pipeline = class {
+// ../action-pipeline.ts
+var ActionPipeline = class {
   processors = [];
   queue = [];
   push(action) {
@@ -319,11 +314,17 @@ var Pipeline = class {
     while (queue.length) {
       let action = queue.shift();
       for (let processor of processors) {
-        await processor(action);
+        let result = await processor(action);
+        result && queue.push(...result);
       }
     }
   }
 };
+
+// world.ts
+var world = new World();
+var spatialIndex = new SpatialIndex(world);
+var display = document.querySelector("rl-display");
 
 // action/spatial-index-processor.ts
 function spatialIndexProcessor(action) {
@@ -398,6 +399,17 @@ async function displayProcessor(action) {
       break;
   }
 }
+
+// action/pipeline.ts
+var Pipeline = class extends ActionPipeline {
+  constructor() {
+    super();
+    this.addProcessor(consoleProcessor);
+    this.addProcessor(gameProcessor);
+    this.addProcessor(spatialIndexProcessor);
+    this.addProcessor(displayProcessor);
+  }
+};
 
 // brain/utils.ts
 function readKey() {
@@ -655,17 +667,17 @@ var RlDisplay = class extends HTMLElement {
   * Computes an optimal character size if we want to fit a given number of characters into a given area.
   */
   static computeTileSize(tileCount, area, aspectRatioRange) {
-    let w2 = Math.floor(area[0] / tileCount[0]);
-    let h2 = Math.floor(area[1] / tileCount[1]);
-    let ar = w2 / h2;
+    let w = Math.floor(area[0] / tileCount[0]);
+    let h = Math.floor(area[1] / tileCount[1]);
+    let ar = w / h;
     if (ar < aspectRatioRange[0]) {
-      h2 = Math.floor(w2 / aspectRatioRange[0]);
+      h = Math.floor(w / aspectRatioRange[0]);
     } else if (ar > aspectRatioRange[1]) {
-      w2 = Math.floor(h2 * aspectRatioRange[1]);
+      w = Math.floor(h * aspectRatioRange[1]);
     }
     return [
-      w2,
-      h2
+      w,
+      h
     ];
   }
   constructor() {
@@ -948,26 +960,21 @@ Array.prototype.random = function() {
 };
 
 // index.ts
-var w = 30;
-var h = 10;
-display.cols = w;
-display.rows = h;
-for (let i = 0; i < w; i++) {
-  for (let j = 0; j < h; j++) {
-    display.draw(i, j, {
-      ch: ".",
-      fg: "gray"
-    }, {
-      zIndex: 0
-    });
+async function init(pipeline2) {
+  const w = 30;
+  const h = 10;
+  display.cols = w;
+  display.rows = h;
+  for (let i = 0; i < w; i++) {
+    for (let j = 0; j < h; j++) {
+      display.draw(i, j, {
+        ch: ".",
+        fg: "gray"
+      }, {
+        zIndex: 0
+      });
+    }
   }
-}
-var pipeline = new Pipeline();
-pipeline.addProcessor(consoleProcessor);
-pipeline.addProcessor(gameProcessor);
-pipeline.addProcessor(spatialIndexProcessor);
-pipeline.addProcessor(displayProcessor);
-async function init() {
   let pc = world.createEntity({
     visual: {
       ch: "@",
@@ -985,7 +992,7 @@ async function init() {
       hp: 10
     }
   });
-  pipeline.push({
+  pipeline2.push({
     type: "spawn",
     entity: pc,
     position: {
@@ -994,10 +1001,8 @@ async function init() {
       zIndex: 1
     }
   });
-  await pipeline.run();
+  await pipeline2.run();
 }
-await init();
-var scheduler = new FairActorScheduler(world);
 function procureAction3(entity) {
   let brain = world.requireComponent(entity, "actor").brain;
   switch (brain) {
@@ -1007,13 +1012,19 @@ function procureAction3(entity) {
       return procureAction2(entity);
   }
 }
-while (true) {
-  let actor = scheduler.next();
-  if (!actor) {
-    break;
+async function run(scheduler2) {
+  while (true) {
+    let actor = scheduler2.next();
+    if (!actor) {
+      break;
+    }
+    let action = await procureAction3(actor);
+    scheduler2.commit(actor, "duration" in action ? action.duration : 1);
+    pipeline.push(action);
+    await pipeline.run();
   }
-  let action = await procureAction3(actor);
-  scheduler.commit(actor, "duration" in action ? action.duration : 1);
-  pipeline.push(action);
-  await pipeline.run();
 }
+var pipeline = new Pipeline();
+await init(pipeline);
+var scheduler = new FairActorScheduler(world);
+run(scheduler);

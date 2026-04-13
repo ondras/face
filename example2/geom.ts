@@ -1,4 +1,4 @@
-import { world, spatialIndex, Position } from "./world.ts";
+import { Position } from "./world.ts";
 
 
 export const DIRS = [
@@ -19,20 +19,6 @@ export function sleep(ms: number) {
 
 export function ring(center: Position) {
 	return DIRS.map(([dx, dy]) => [center.x+dx, center.y+dy] as [number, number]);
-}
-
-export function canMoveTo(x: number, y: number) {
-	for (let entity of spatialIndex.list(x, y)) {
-		let blocks = world.getComponent(entity, "blocks");
-		if (blocks?.movement) { return false; }
-	}
-	return true;
-}
-
-export function readKey(): Promise<KeyboardEvent> {
-	let { promise, resolve } = Promise.withResolvers<KeyboardEvent>();
-	window.addEventListener("keydown", resolve, {once:true});
-	return promise;
 }
 
 export function dist8(x1: number, y1: number, x2: number, y2: number) {

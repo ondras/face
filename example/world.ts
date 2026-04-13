@@ -1,4 +1,5 @@
-import { World, Entity, SpatialIndex, PubSub } from "../face.ts";
+import { World, Entity, SpatialIndex } from "../face.ts";
+import { PubSub } from "./pubsub.ts";
 
 
 interface Blocks {

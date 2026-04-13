@@ -1,11 +1,8 @@
-import { ActionPipeline, FairActorScheduler, Entity } from "face.ts";
+import { FairActorScheduler, Entity } from "face.ts";
 import { world, display } from "./world.ts";
 import { Action } from "./action/actions.ts";
+import ActionPipeline from "./action/pipeline.ts";
 
-import spatialIndexProcessor from "./action/spatial-index-processor.ts";
-import consoleProcessor from "./action/console-processor.ts";
-import gameProcessor from "./action/game-processor.ts";
-import displayProcessor from "./action/display-processor.ts";
 
 import * as pc from "./brain/pc.ts";
 import * as npc from "./brain/npc.ts";
@@ -13,29 +10,22 @@ import * as npc from "./brain/npc.ts";
 import "@ondras/rl-display"; // define
 import "./random.ts"; // define
 
-const w = 30;
-const h = 10;
-display.cols = w;
-display.rows = h;
-for (let i=0;i<w;i++) {
-	for (let j=0;j<h;j++) {
-		display.draw(i, j, {ch:".", fg:"gray"}, { zIndex: 0 });
+async function init(pipeline: ActionPipeline) {
+	const w = 30;
+	const h = 10;
+	display.cols = w;
+	display.rows = h;
+	for (let i=0;i<w;i++) {
+		for (let j=0;j<h;j++) {
+			display.draw(i, j, {ch:".", fg:"gray"}, { zIndex: 0 });
+		}
 	}
-}
 
-let pipeline = new ActionPipeline<Action>();
-pipeline.addProcessor(consoleProcessor);
-pipeline.addProcessor(gameProcessor);
-pipeline.addProcessor(spatialIndexProcessor);
-pipeline.addProcessor(displayProcessor);
-
-
-async function init() {
 	let pc = world.createEntity({
 		visual: {ch:"@", fg:"red"},
 		blocks: {movement:true, sight:false},
 		actor: {
-			wait:0,
+			wait: 0,
 			brain: "pc"
 		},
 		health: { hp: 10 }
@@ -46,10 +36,6 @@ async function init() {
 	await pipeline.run();
 }
 
-await init();
-
-let scheduler = new FairActorScheduler(world);
-
 function procureAction(entity: Entity): Promise<Action> | Action {
 	let brain = world.requireComponent(entity, "actor").brain;
 	switch (brain) {
@@ -58,13 +44,21 @@ function procureAction(entity: Entity): Promise<Action> | Action {
 	}
 }
 
-while (true) {
-	let actor = scheduler.next();
-	if (!actor) { break; }
+async function run(scheduler: FairActorScheduler) {
+	while (true) {
+		let actor = scheduler.next();
+		if (!actor) { break; }
 
-	let action = await procureAction(actor);
-	scheduler.commit(actor, "duration" in action ? action.duration : 1);
+		let action = await procureAction(actor);
+		scheduler.commit(actor, "duration" in action ? action.duration : 1);
 
-	pipeline.push(action);
-	await pipeline.run();
+		pipeline.push(action);
+		await pipeline.run();
+	}
 }
+
+let pipeline = new ActionPipeline();
+await init(pipeline);
+
+let scheduler = new FairActorScheduler(world);
+run(scheduler);

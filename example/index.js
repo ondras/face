@@ -13,11 +13,18 @@ var Query = class extends EventTarget {
     world2.addEventListener("component-add", (e) => this.onAddComponent(e.detail.entity, e.detail.component), options);
     world2.addEventListener("component-remove", (e) => this.onRemoveComponent(e.detail.entity, e.detail.component), options);
     world2.addEventListener("entity-remove", (e) => this.onRemoveEntity(e.detail.entity), options);
-    world2.findEntities(...components).forEach((result) => this.entities.add(result.entity));
+    world2.addEventListener("reset", (e) => this.onReset(e.target), options);
+    world2.findEntities(...components).keys().forEach((entity) => this.entities.add(entity));
   }
   destroy() {
     this.entities.clear();
     this.ac.abort();
+  }
+  onReset(world2) {
+    const { entities, components } = this;
+    entities.clear();
+    world2.findEntities(...components).keys().forEach((entity) => entities.add(entity));
+    this.dispatchEvent(new Event("change"));
   }
   onAddComponent(entity, component) {
     const { entities, components } = this;
@@ -122,16 +129,14 @@ var World = class extends TypedEventTarget {
     }
     return keysPresent(data, components);
   }
+  /** world.findEntities("position") -> Map<3, {position:{x,y}}> */
   findEntities(...components) {
-    let result = [];
+    let result = /* @__PURE__ */ new Map();
     for (let [entity, storage] of this.storage.entries()) {
       if (!keysPresent(storage, components)) {
         continue;
       }
-      result.push({
-        entity,
-        ...storage
-      });
+      result.set(entity, storage);
     }
     return result;
   }
@@ -164,59 +169,133 @@ var World = class extends TypedEventTarget {
     }
     return result;
   }
-  /* */
   query(...components) {
     return new Query(this, ...components);
   }
-  /*	*/
+  toString() {
+    let dict = {};
+    for (let [entity, components] of this.storage.entries()) {
+      dict[entity] = components;
+    }
+    return JSON.stringify(dict);
+  }
+  fromString(str) {
+    const { storage } = this;
+    let counter = 0;
+    let dict = JSON.parse(str);
+    storage.clear();
+    for (let key in dict) {
+      let entity = Number(key);
+      storage.set(entity, dict[key]);
+      if (entity > counter) {
+        counter = entity;
+      }
+    }
+    this.counter = counter;
+    this.dispatchEvent(new CustomEvent("reset"));
+  }
 };
 function keysPresent(data, keys) {
   return keys.every((key) => key in data);
 }
 
 // ../scheduler.ts
-var FairActorScheduler = class {
-  constructor(world2) {
-    this.world = world2;
-  }
-  next() {
-    let results = this.world.findEntities("actor");
-    if (!results.length) {
-      return void 0;
-    }
-    let result = results.find(({ actor }) => actor.wait == 0);
-    if (result) {
-      result.actor.wait = 1;
-      return result.entity;
-    } else {
-      results.forEach(({ actor }) => actor.wait = 0);
-      return this.next();
-    }
-  }
-};
 var DurationActorScheduler = class {
   constructor(world2) {
     this.world = world2;
+    this.query = world2.query("actor");
   }
+  query;
   next() {
-    let results = this.world.findEntities("actor");
-    let minWait = 1 / 0;
-    let minResult;
-    results.forEach((result) => {
-      if (result.actor.wait < minWait) {
-        minWait = result.actor.wait;
-        minResult = result;
-      }
-    });
-    results.forEach(({ actor }) => actor.wait -= minWait);
-    return minResult?.entity;
+    const { world: world2, query } = this;
+    let { entities } = query;
+    let actors = /* @__PURE__ */ new Map();
+    entities.forEach((entity) => actors.set(entity, world2.requireComponent(entity, "actor")));
+    let minEntity = findMinWait(actors);
+    if (!minEntity) {
+      return void 0;
+    }
+    let minWait = actors.get(minEntity).wait;
+    actors.forEach((actor) => actor.wait -= minWait);
+    return minEntity;
   }
   commit(entity, duration) {
     this.world.requireComponent(entity, "actor").wait += duration;
   }
 };
+function findMinWait(actors) {
+  let minWait = 1 / 0;
+  let minEntity;
+  actors.forEach((actor, entity) => {
+    if (actor.wait < minWait) {
+      minWait = actor.wait;
+      minEntity = entity;
+    }
+  });
+  return minEntity;
+}
+var FairActorScheduler = class extends DurationActorScheduler {
+  next() {
+    let result = super.next();
+    if (!result) {
+      return void 0;
+    }
+    this.commit(result, 1);
+    return result;
+  }
+};
 
-// ../pubsub.ts
+// ../spatial-index.ts
+var SpatialIndex = class {
+  world;
+  data = [];
+  entityToSet = /* @__PURE__ */ new Map();
+  constructor(world2) {
+    this.world = world2;
+    world2.addEventListener("reset", () => this.rebuild());
+  }
+  update(entity) {
+    const { world: world2, data, entityToSet } = this;
+    const existingSet = entityToSet.get(entity);
+    if (existingSet) {
+      existingSet.delete(entity);
+      entityToSet.delete(entity);
+    }
+    const position = world2.getComponent(entity, "position");
+    if (position) {
+      const storage = getSetFor(position.x, position.y, data);
+      storage.add(entity);
+      entityToSet.set(entity, storage);
+    }
+  }
+  list(x, y) {
+    if (x < 0 || y < 0) {
+      return /* @__PURE__ */ new Set();
+    }
+    return getSetFor(x, y, this.data);
+  }
+  rebuild() {
+    const { world: world2 } = this;
+    this.data = [];
+    this.entityToSet.clear();
+    let entities = world2.findEntities("position").keys();
+    for (let entity of entities) {
+      this.update(entity);
+    }
+  }
+};
+function getSetFor(x, y, data) {
+  while (data.length <= x) {
+    data.push([]);
+  }
+  const col = data[x];
+  while (col.length <= y) {
+    col.push(/* @__PURE__ */ new Set());
+  }
+  return col[y];
+}
+
+// pubsub.ts
 var PubSub = class {
   listenerStorage = /* @__PURE__ */ new Map();
   subscribe(message, listener) {
@@ -240,43 +319,6 @@ var PubSub = class {
     return listeners;
   }
 };
-
-// ../spatial-index.ts
-var SpatialIndex = class {
-  world;
-  data = [];
-  entityToSet = /* @__PURE__ */ new Map();
-  constructor(world2) {
-    this.world = world2;
-  }
-  update(entity) {
-    const { world: world2, data, entityToSet } = this;
-    const existingSet = entityToSet.get(entity);
-    if (existingSet) {
-      existingSet.delete(entity);
-      entityToSet.delete(entity);
-    }
-    const position = world2.getComponent(entity, "position");
-    if (position) {
-      const storage = getSetFor(position.x, position.y, data);
-      storage.add(entity);
-      entityToSet.set(entity, storage);
-    }
-  }
-  list(x, y) {
-    return getSetFor(x, y, this.data);
-  }
-};
-function getSetFor(x, y, data) {
-  while (data.length <= x) {
-    data.push([]);
-  }
-  const col = data[x];
-  while (col.length <= y) {
-    col.push(/* @__PURE__ */ new Set());
-  }
-  return col[y];
-}
 
 // world.ts
 var world = new World();
@@ -815,7 +857,7 @@ function ring(center) {
   return DIRS.map(([dx, dy]) => [center.x + dx, center.y + dy]);
 }
 function canMoveTo(x, y) {
-  return spatialIndex.list(x, y).every((entity) => {
+  return [...spatialIndex.list(x, y)].every((entity) => {
     let blocks = world.getComponent(entity, "blocks");
     if (blocks?.movement) {
       return false;

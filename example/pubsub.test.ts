@@ -1,7 +1,7 @@
 // deno-lint-ignore-file prefer-const
 
 import { assertEquals } from "jsr:@std/assert";
-import { PubSub } from "./face.ts";
+import { PubSub } from "./pubsub.ts";
 
 
 Deno.test("pubsub sync", () => {
