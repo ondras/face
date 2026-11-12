@@ -1,6 +1,6 @@
 // deno-lint-ignore-file prefer-const
 
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals, assertStrictEquals } from "jsr:@std/assert";
 import { ActionPipeline } from "./face.ts";
 
 
@@ -62,7 +62,7 @@ Deno.test("action pipeline finishes all processors before returned actions", asy
 	assertEquals(log, ["a:first", "a:second", "b:first", "b:second"]);
 });
 
-Deno.test("action pipeline processes returned actions in FIFO order", async () => {
+Deno.test("action pipeline processes returned actions before queued actions", async () => {
 	let pipeline = new ActionPipeline<Action>();
 	let log: string[] = [];
 
@@ -76,24 +76,80 @@ Deno.test("action pipeline processes returned actions in FIFO order", async () =
 
 	await pipeline.run();
 
-	assertEquals(log, ["a", "d", "b", "c"]);
+	assertEquals(log, ["a", "b", "c", "d"]);
 });
 
-Deno.test("action pipeline processes cascading actions", async () => {
+Deno.test("action pipeline processes branching actions depth-first", async () => {
 	let pipeline = new ActionPipeline<Action>();
 	let log: string[] = [];
 
 	pipeline.addProcessor(action => {
 		log.push(action.type);
-		if (action.type == "a") { return [{ type: "b" }]; }
-		if (action.type == "b") { return [{ type: "c" }]; }
+		if (action.type == "a") { return [{ type: "b" }, { type: "c" }]; }
+		if (action.type == "b") { return [{ type: "d" }, { type: "e" }]; }
+		if (action.type == "c") { return [{ type: "f" }]; }
 	});
 
 	pipeline.push({ type: "a" });
 
 	await pipeline.run();
 
-	assertEquals(log, ["a", "b", "c"]);
+	assertEquals(log, ["a", "b", "d", "e", "c", "f"]);
+});
+
+Deno.test("action pipeline preserves returned action order across processors", async () => {
+	let pipeline = new ActionPipeline<Action>();
+	let log: string[] = [];
+
+	pipeline.addProcessor(action => {
+		log.push(`${action.type}:first`);
+		if (action.type == "a") { return [{ type: "b" }, { type: "c" }]; }
+	});
+	pipeline.addProcessor(action => {
+		log.push(`${action.type}:second`);
+		if (action.type == "a") { return Promise.resolve([{ type: "d" }, { type: "e" }]); }
+	});
+	pipeline.push({ type: "a" });
+
+	await pipeline.run();
+
+	assertEquals(log, [
+		"a:first", "a:second",
+		"b:first", "b:second",
+		"c:first", "c:second",
+		"d:first", "d:second",
+		"e:first", "e:second"
+	]);
+});
+
+Deno.test("action pipeline passes immediate parent references to processors", async () => {
+	let pipeline = new ActionPipeline<Action>();
+	let a = { type: "a" };
+	let b = { type: "b" };
+	let c = { type: "c" };
+	let d = { type: "d" };
+	let e = { type: "e" };
+	let parents = new Map<Action, Action | undefined>([
+		[a, undefined], [b, a], [c, a], [d, b], [e, undefined]
+	]);
+	let log: string[] = [];
+
+	pipeline.addProcessor((action, parent) => {
+		assertStrictEquals(parent, parents.get(action));
+		if (action == a) { return [b]; }
+		if (action == b) { return [d]; }
+	});
+	pipeline.addProcessor((action, parent) => {
+		assertStrictEquals(parent, parents.get(action));
+		log.push(action.type);
+		if (action == a) { return Promise.resolve([c]); }
+	});
+	pipeline.push(a);
+	pipeline.push(e);
+
+	await pipeline.run();
+
+	assertEquals(log, ["a", "b", "d", "c", "e"]);
 });
 
 Deno.test("action pipeline awaits async processors", async () => {
