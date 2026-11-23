@@ -304,7 +304,9 @@ var ActionPipeline = class {
   processors = [];
   queue = [];
   push(action) {
-    this.queue.push(action);
+    this.queue.push({
+      action
+    });
   }
   addProcessor(processor) {
     this.processors.push(processor);
@@ -312,11 +314,16 @@ var ActionPipeline = class {
   async run() {
     const { queue, processors } = this;
     while (queue.length) {
-      let action = queue.shift();
+      let { action, parent } = queue.shift();
+      let children = [];
       for (let processor of processors) {
-        let result = await processor(action);
-        result && queue.push(...result);
+        let result = await processor(action, parent);
+        result && children.push(...result);
       }
+      queue.unshift(...children.map((child) => ({
+        action: child,
+        parent: action
+      })));
     }
   }
 };

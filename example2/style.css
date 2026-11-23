@@ -1,0 +1,26 @@
+ul {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  list-style: none;
+  gap: 8px;
+}
+
+li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  span {
+    padding: 0 4px;
+    border: 1px solid black;
+    border-radius: 4px;
+    text-align: center;
+  }
+}
+
+li li::before {
+  content: "⬇";
+  align-self: center;
+  line-height: 1;
+}
