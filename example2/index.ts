@@ -1,4 +1,4 @@
-import { FairActorScheduler, Entity } from "face.ts";
+import { DurationActorScheduler, Entity } from "face.ts";
 import { world, display } from "./world.ts";
 import { Action } from "./action/actions.ts";
 import ActionPipeline from "./action/pipeline.ts";
@@ -44,7 +44,7 @@ function procureAction(entity: Entity): Promise<Action> | Action {
 	}
 }
 
-async function run(scheduler: FairActorScheduler) {
+async function run(scheduler: DurationActorScheduler) {
 	while (true) {
 		let actor = scheduler.next();
 		if (!actor) { break; }
@@ -60,5 +60,5 @@ async function run(scheduler: FairActorScheduler) {
 let pipeline = new ActionPipeline();
 await init(pipeline);
 
-let scheduler = new FairActorScheduler(world);
+let scheduler = new DurationActorScheduler(world);
 run(scheduler);

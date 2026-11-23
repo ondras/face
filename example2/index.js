@@ -238,16 +238,6 @@ function findMinWait(actors) {
   });
   return minEntity;
 }
-var FairActorScheduler = class extends DurationActorScheduler {
-  next() {
-    let result = super.next();
-    if (!result) {
-      return void 0;
-    }
-    this.commit(result, 1);
-    return result;
-  }
-};
 
 // ../spatial-index.ts
 var SpatialIndex = class {
@@ -1033,5 +1023,5 @@ async function run(scheduler2) {
 }
 var pipeline = new Pipeline();
 await init(pipeline);
-var scheduler = new FairActorScheduler(world);
+var scheduler = new DurationActorScheduler(world);
 run(scheduler);
