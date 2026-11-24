@@ -1,26 +1,44 @@
-ul {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  list-style: none;
-  gap: 8px;
+body {
+	background-color: #000;
+	color: #ccc;
 }
 
-li {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.actions {
+	max-width: 500px;
+	background-color: #333;
 
-  span {
-    padding: 0 4px;
-    border: 1px solid black;
-    border-radius: 4px;
-    text-align: center;
-  }
+	ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		justify-content: center;
+		gap: 8px;
+	}
+
+	& > ul {
+		justify-content: end;
+		overflow: auto;
+	}
+
+	li {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+
+		span {
+			padding: 0 4px;
+			border: 1px solid currentColor;
+			border-radius: 4px;
+			text-align: center;
+		}
+	}
+
+	li li::before {
+		content: "⬇";
+		align-self: center;
+		line-height: 1;
+	}
+
 }
 
-li li::before {
-  content: "⬇";
-  align-self: center;
-  line-height: 1;
-}

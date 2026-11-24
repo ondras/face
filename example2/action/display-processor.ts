@@ -18,6 +18,7 @@ export default async function displayProcessor(action: Action) {
 			let projectile = display.draw(source.x, source.y, {ch:"*", fg:"yellow"}, { zIndex: 3 });
 			let dist = geom.distEuclidean(source.x, source.y, target.x, target.y);
 			await display.move(projectile, target.x, target.y, dist * 20);
+			display.delete(projectile);
 		} break;
 
 		case "move": {

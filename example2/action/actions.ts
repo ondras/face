@@ -37,4 +37,9 @@ export interface Shoot {
 	target: Position;
 }
 
-export type Action = Idle | Move | Attack | Spawn | Damage | Shoot;
+export interface Death {
+	type: "death";
+	entity: Entity;
+}
+
+export type Action = Idle | Move | Attack | Spawn | Damage | Shoot | Death;

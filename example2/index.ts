@@ -1,14 +1,14 @@
 import { DurationActorScheduler, Entity } from "face.ts";
-import { world, display } from "./world.ts";
+import { world, display, spatialIndex } from "./world.ts";
 import { Action } from "./action/actions.ts";
 import ActionPipeline from "./action/pipeline.ts";
-
 
 import * as pc from "./brain/pc.ts";
 import * as npc from "./brain/npc.ts";
 
 import "@ondras/rl-display"; // define
 import "./random.ts"; // define
+
 
 async function init(pipeline: ActionPipeline) {
 	const w = 30;
@@ -21,19 +21,16 @@ async function init(pipeline: ActionPipeline) {
 		}
 	}
 
-	let pc = world.createEntity({
-		visual: {ch:"@", fg:"red"},
-		blocks: {movement:true, sight:false},
-		actor: {
-			wait: 0,
-			brain: "pc"
-		},
-		health: { hp: 10 }
-	});
+	world.addEventListener("entity-remove", e => {
+		const { entity } = e.detail;
+		display.delete(entity);
+		spatialIndex.update(entity);
+	})
 
-	pipeline.push({ type: "spawn", entity: pc, position: {x: 5, y: 5, zIndex: 1} });
+	document.body.append(pipeline.graphNode);
 
-	await pipeline.run();
+	await pc.spawn(5, 5, pipeline);
+	await npc.spawn(pipeline);
 }
 
 function procureAction(entity: Entity): Promise<Action> | Action {
@@ -50,10 +47,10 @@ async function run(scheduler: DurationActorScheduler) {
 		if (!actor) { break; }
 
 		let action = await procureAction(actor);
-		scheduler.commit(actor, "duration" in action ? action.duration : 1);
-
 		pipeline.push(action);
 		await pipeline.run();
+
+		scheduler.commit(actor, "duration" in action ? action.duration : 1);
 	}
 }
 

@@ -1,5 +1,5 @@
 type PromiseOrValue<T> = T | Promise<T>;
-type Processor<A> = (action: A, parent?: A) => PromiseOrValue<void | A[]>;
+export type Processor<A> = (action: A, parent?: A) => PromiseOrValue<void | A[]>;
 type Entry<A> = { action: A; parent?: A };
 
 

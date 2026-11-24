@@ -351,6 +351,38 @@ function gameProcessor(action) {
         Object.assign(world.requireComponent(action.entity, "position"), action.position);
       }
       break;
+    case "shoot": {
+      let { target } = action;
+      let targetEntities = spatialIndex.list(target.x, target.y);
+      if (!targetEntities.size) {
+        return;
+      }
+      let damage = {
+        type: "damage",
+        target: targetEntities.values().next().value,
+        amount: 1
+      };
+      return [
+        damage
+      ];
+    }
+    case "damage": {
+      let health = world.requireComponent(action.target, "health");
+      health.hp = Math.max(0, health.hp - action.amount);
+      if (health.hp > 0) {
+        return;
+      }
+      let death = {
+        type: "death",
+        entity: action.target
+      };
+      return [
+        death
+      ];
+    }
+    case "death": {
+      world.removeEntity(action.entity);
+    }
   }
 }
 
@@ -386,6 +418,7 @@ async function displayProcessor(action) {
         });
         let dist = distEuclidean(source.x, source.y, target.x, target.y);
         await display.move(projectile, target.x, target.y, dist * 20);
+        display.delete(projectile);
       }
       break;
     case "move":
@@ -397,14 +430,73 @@ async function displayProcessor(action) {
   }
 }
 
+// action/graph-processor.ts
+var GraphProcessor = class {
+  pipeline;
+  node;
+  ul;
+  actionNodes;
+  constructor(pipeline2) {
+    this.pipeline = pipeline2;
+    this.node = document.createElement("div");
+    this.ul = document.createElement("ul");
+    this.actionNodes = /* @__PURE__ */ new Map();
+    const { node, ul } = this;
+    node.classList.add("actions");
+    node.append(ul);
+    pipeline2.addProcessor((action, parentAction) => this.graphProcessor(action, parentAction));
+  }
+  graphProcessor(action, parentAction) {
+    const { node, actionNodes } = this;
+    let li = document.createElement("li");
+    let span = document.createElement("span");
+    let ul = document.createElement("ul");
+    span.textContent = action.type;
+    li.append(span, ul);
+    actionNodes.set(action, li);
+    if (parentAction) {
+      let parentNode = actionNodes.get(parentAction);
+      if (!parentNode) {
+        throw new Error(`Unable to find node for parent action ${parentAction}`);
+      }
+      parentNode.querySelector("ul").append(li);
+    } else {
+      this.ul.append(li);
+    }
+  }
+  flush() {
+    const { node, actionNodes } = this;
+    this.scroll();
+    actionNodes.clear();
+  }
+  scroll() {
+    const { ul } = this;
+    while (1) {
+      let first = ul.children[0];
+      if (!first || first.offsetLeft >= 0) {
+        break;
+      }
+      first.remove();
+    }
+  }
+};
+
 // action/pipeline.ts
 var Pipeline = class extends ActionPipeline {
+  graphProcessor = new GraphProcessor(this);
   constructor() {
     super();
     this.addProcessor(consoleProcessor);
     this.addProcessor(gameProcessor);
     this.addProcessor(spatialIndexProcessor);
     this.addProcessor(displayProcessor);
+  }
+  get graphNode() {
+    return this.graphProcessor.node;
+  }
+  async run() {
+    await super.run();
+    this.graphProcessor.flush();
   }
 };
 
@@ -474,15 +566,12 @@ function eventToAction(e, entity) {
       position
     };
   }
-  return null;
-}
-async function procureAction(entity) {
-  while (true) {
-    let event = await readKey();
-    let action = await eventToAction(event, entity);
-    if (action) {
-      return action;
-    }
+  if (code == "Period") {
+    return {
+      type: "idle"
+    };
+  }
+  if (code == "KeyQ") {
     let tx = Math.floor(Math.random() * display.cols);
     let ty = Math.floor(Math.random() * display.rows);
     return {
@@ -494,6 +583,61 @@ async function procureAction(entity) {
       }
     };
   }
+  if (code == "KeyW") {
+    let entities = world.findEntities("position", "actor");
+    let candidates = [
+      ...entities.values()
+    ].filter((components) => components.actor.brain == "npc");
+    let tx = candidates[0].position.x;
+    let ty = candidates[0].position.y;
+    return {
+      type: "shoot",
+      entity,
+      target: {
+        x: tx,
+        y: ty
+      }
+    };
+  }
+  return null;
+}
+async function procureAction(entity) {
+  while (true) {
+    let event = await readKey();
+    let action = await eventToAction(event, entity);
+    if (action) {
+      return action;
+    }
+  }
+}
+async function spawn(x, y, pipeline2) {
+  let entity = world.createEntity({
+    visual: {
+      ch: "@",
+      fg: "red"
+    },
+    blocks: {
+      movement: true,
+      sight: false
+    },
+    actor: {
+      wait: 0,
+      brain: "pc"
+    },
+    health: {
+      hp: 10
+    }
+  });
+  pipeline2.push({
+    type: "spawn",
+    entity,
+    position: {
+      x,
+      y,
+      zIndex: 1
+    }
+  });
+  await pipeline2.run();
 }
 
 // brain/npc.ts
@@ -501,6 +645,37 @@ function procureAction2(entity) {
   return {
     type: "idle"
   };
+}
+async function spawn2(pipeline2) {
+  let entity = world.createEntity({
+    visual: {
+      ch: "g",
+      fg: "lime"
+    },
+    blocks: {
+      movement: true,
+      sight: false
+    },
+    actor: {
+      wait: 0,
+      brain: "npc"
+    },
+    health: {
+      hp: 3
+    }
+  });
+  let x = 10;
+  let y = 5;
+  pipeline2.push({
+    type: "spawn",
+    entity,
+    position: {
+      x,
+      y,
+      zIndex: 1
+    }
+  });
+  await pipeline2.run();
 }
 
 // deno:https://jsr.io/@ondras/rl-display/2.0.0/src/storage.ts
@@ -972,33 +1147,14 @@ async function init(pipeline2) {
       });
     }
   }
-  let pc = world.createEntity({
-    visual: {
-      ch: "@",
-      fg: "red"
-    },
-    blocks: {
-      movement: true,
-      sight: false
-    },
-    actor: {
-      wait: 0,
-      brain: "pc"
-    },
-    health: {
-      hp: 10
-    }
+  world.addEventListener("entity-remove", (e) => {
+    const { entity } = e.detail;
+    display.delete(entity);
+    spatialIndex.update(entity);
   });
-  pipeline2.push({
-    type: "spawn",
-    entity: pc,
-    position: {
-      x: 5,
-      y: 5,
-      zIndex: 1
-    }
-  });
-  await pipeline2.run();
+  document.body.append(pipeline2.graphNode);
+  await spawn(5, 5, pipeline2);
+  await spawn2(pipeline2);
 }
 function procureAction3(entity) {
   let brain = world.requireComponent(entity, "actor").brain;
@@ -1016,9 +1172,9 @@ async function run(scheduler2) {
       break;
     }
     let action = await procureAction3(actor);
-    scheduler2.commit(actor, "duration" in action ? action.duration : 1);
     pipeline.push(action);
     await pipeline.run();
+    scheduler2.commit(actor, "duration" in action ? action.duration : 1);
   }
 }
 var pipeline = new Pipeline();
