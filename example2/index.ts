@@ -1,5 +1,5 @@
 import { DurationActorScheduler, Entity } from "face.ts";
-import { world, display, spatialIndex } from "./world.ts";
+import { world, display } from "./world.ts";
 import { Action } from "./action/actions.ts";
 import ActionPipeline from "./action/pipeline.ts";
 
@@ -20,12 +20,6 @@ async function init(pipeline: ActionPipeline) {
 			display.draw(i, j, {ch:".", fg:"gray"}, { zIndex: 0 });
 		}
 	}
-
-	world.addEventListener("entity-remove", e => {
-		const { entity } = e.detail;
-		display.delete(entity);
-		spatialIndex.update(entity);
-	})
 
 	document.body.append(pipeline.graphNode);
 

@@ -25,5 +25,9 @@ export default async function displayProcessor(action: Action) {
 			let position = world.requireComponent(action.entity, "position");
 			await display.move(action.entity, position.x, position.y);
 		} break;
+
+		case "death": {
+			display.delete(action.entity);
+		} break;
 	}
 }

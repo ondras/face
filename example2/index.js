@@ -249,18 +249,23 @@ var SpatialIndex = class {
     world2.addEventListener("reset", () => this.rebuild());
   }
   update(entity) {
+    this.remove(entity);
     const { world: world2, data, entityToSet } = this;
-    const existingSet = entityToSet.get(entity);
-    if (existingSet) {
-      existingSet.delete(entity);
-      entityToSet.delete(entity);
-    }
     const position = world2.getComponent(entity, "position");
     if (position) {
       const storage = getSetFor(position.x, position.y, data);
       storage.add(entity);
       entityToSet.set(entity, storage);
     }
+  }
+  remove(entity) {
+    const { entityToSet } = this;
+    const existingSet = entityToSet.get(entity);
+    if (!existingSet) {
+      return;
+    }
+    existingSet.delete(entity);
+    entityToSet.delete(entity);
   }
   list(x, y) {
     if (x < 0 || y < 0) {
@@ -329,6 +334,9 @@ function spatialIndexProcessor(action) {
     case "spawn":
     case "move":
       spatialIndex.update(action.entity);
+      break;
+    case "death":
+      spatialIndex.remove(action.entity);
       break;
   }
 }
@@ -425,6 +433,11 @@ async function displayProcessor(action) {
       {
         let position = world.requireComponent(action.entity, "position");
         await display.move(action.entity, position.x, position.y);
+      }
+      break;
+    case "death":
+      {
+        display.delete(action.entity);
       }
       break;
   }
@@ -1147,11 +1160,6 @@ async function init(pipeline2) {
       });
     }
   }
-  world.addEventListener("entity-remove", (e) => {
-    const { entity } = e.detail;
-    display.delete(entity);
-    spatialIndex.update(entity);
-  });
   document.body.append(pipeline2.graphNode);
   await spawn(5, 5, pipeline2);
   await spawn2(pipeline2);

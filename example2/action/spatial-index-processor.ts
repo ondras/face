@@ -8,5 +8,9 @@ export default function spatialIndexProcessor(action: Action) {
 		case "move":
 			spatialIndex.update(action.entity);
 		break;
+
+		case "death":
+			spatialIndex.remove(action.entity);
+		break;
 	}
 }
