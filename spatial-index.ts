@@ -19,13 +19,8 @@ export class SpatialIndex {
 	}
 
 	update(entity: Entity) {
+		this.remove(entity);
 		const { world, data, entityToSet } = this;
-
-		const existingSet = entityToSet.get(entity);
-		if (existingSet) {
-			existingSet.delete(entity);
-			entityToSet.delete(entity);
-		}
 
 		const position = world.getComponent(entity, "position");
 		if (position) { // add/update
@@ -33,6 +28,15 @@ export class SpatialIndex {
 			storage.add(entity);
 			entityToSet.set(entity, storage);
 		}
+	}
+
+	remove(entity: Entity) {
+		const { entityToSet } = this;
+		const existingSet = entityToSet.get(entity);
+		if (!existingSet) { return; }
+
+		existingSet.delete(entity);
+		entityToSet.delete(entity);
 	}
 
 	list(x: number, y: number): Set<Entity> {

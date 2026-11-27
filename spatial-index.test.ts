@@ -45,6 +45,38 @@ Deno.test("spatial index", () => {
 	assertEquals(si.list(5, 5).size, 0);
 });
 
+Deno.test("explicit removal uses indexed position and preserves the world", () => {
+	let w = new World<Components>();
+	let si = new SpatialIndex(w);
+	let entity = w.createEntity({position: {x:5, y:5}});
+	let other = w.createEntity({position: {x:5, y:5}});
+	si.update(entity);
+	si.update(other);
+
+	w.requireComponent(entity, "position").x = 6;
+	si.remove(entity);
+	si.remove(entity);
+
+	assertEquals(si.list(5, 5), new Set([other]));
+	assertEquals(si.list(6, 5).size, 0);
+	assertEquals(w.requireComponent(entity, "position"), {x:6, y:5});
+
+	si.update(entity);
+	assert(si.list(6, 5).has(entity));
+});
+
+Deno.test("explicit removal works after entity deletion", () => {
+	let w = new World<Components>();
+	let si = new SpatialIndex(w);
+	let entity = w.createEntity({position: {x:5, y:5}});
+	si.update(entity);
+
+	w.removeEntity(entity);
+	si.remove(entity);
+
+	assertEquals(si.list(5, 5).size, 0);
+});
+
 Deno.test("negative coordinates", () => {
 	let w = new World<Components>();
 	let si = new SpatialIndex(w);
